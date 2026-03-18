@@ -28,7 +28,61 @@ body{
 #game{
   display:flex;flex-direction:column;align-items:center;
   flex:0 0 auto;width:310px;position:relative;z-index:2;
+  transition: transform 0.3s ease;
 }
+
+/* --- ANIMACIONES DE VICTORIA Y ERROR --- */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-2px); }
+  75% { transform: translateX(2px); }
+}
+.invalid-state { animation: shake 0.3s ease-in-out; }
+
+/* Efecto de Victoria Mejorado */
+.victory-sweep { 
+  animation: victory-bounce 0.8s ease-in-out; 
+}
+
+/* Usamos un contenedor absoluto para el destello para no cortar los bordes del tablero */
+.victory-sweep::before {
+  content: "";
+  position: absolute;
+  top: 0; left: -40px; right: -40px; bottom: 0;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    rgba(126, 200, 104, 0.4), 
+    transparent
+  );
+  z-index: 100;
+  pointer-events: none;
+  border-radius: 15px;
+  animation: sweep-down 2.0s ease-in-out forwards; /* Más lento (1.8s) */
+}
+
+@keyframes victory-bounce {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.03); }
+  100% { transform: scale(1); }
+}
+
+@keyframes sweep-down { 
+  0% { transform: translateY(-100%); opacity: 0; }
+  20% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { transform: translateY(250%); opacity: 0; } 
+}
+
+/* Confeti */
+.confetti {
+  position: absolute; width: 8px; height: 8px; border-radius: 2px;
+  top: -10px; z-index: 300; animation: fall linear forwards;
+}
+@keyframes fall {
+  to { transform: translateY(100vh) rotate(360deg); opacity: 0; }
+}
+
 .titulo-wrap{position:relative;width:100%;margin-bottom:8px;}
 .pauta-lines{
   position:relative;height:68px;
@@ -68,9 +122,7 @@ h1{font-family:'Schoolbell',cursive;font-size:46px;font-weight:400;color:#1A3A60
   background-image:repeating-linear-gradient(45deg,#302850 0,#302850 3px,#3A3060 3px,#3A3060 7px);
 }
 
-/* ── NUEVO CSS PARA RESALTAR CASILLAS VÁLIDAS ── */
 .cell.valid-target{background:#EEF3F8;border-color:#A8C0D8;border-style:dashed;}
-
 .cell.valid-hover{background:#D8EAF0;border-color:#5080A8;box-shadow:inset 0 0 0 2px rgba(80,128,168,.3);}
 .cell.valid-state{background:#EDF5E5;border-color:#7AB870;border-width:2px;}
 .cell.invalid-state{background:#F8EAEA;border-color:#D07070;border-width:2px;}
@@ -115,14 +167,16 @@ button:disabled{opacity: 0.4; cursor: default;}
 .btn-secondary:hover{background:#F5EEE0;border-color:#B8A878 !important;}
 .btn-toggle-rules.open{background:#3A3060;color:#FFF;border-color:#3A3060 !important;}
 
-/* ── RULES PANEL ── */
 #rules-panel{
-  width:190px;flex:0 0 190px;
+  position:absolute;
+  left:calc(82%);
+  top:0;
+  width:190px;
   background:#FFFEF5;border-radius:14px;border:1.5px solid #D0C8A8;
   padding:14px 12px;box-shadow:0 2px 12px rgba(0,0,0,.07);
-  margin-left:12px;
   opacity:0;pointer-events:none;transform:translateX(-8px);
   transition:opacity .22s ease,transform .22s ease;
+  z-index:50;
 }
 #rules-panel.visible{opacity:1;pointer-events:auto;transform:translateX(0);}
 .rules-title{font-size:10px;font-weight:900;color:#1A1A1A;letter-spacing:3px;text-transform:uppercase;margin-bottom:12px;}
@@ -152,10 +206,27 @@ button:disabled{opacity: 0.4; cursor: default;}
 @media(max-width:540px){
   #shell{flex-direction:column;align-items:center;}
   #game{width:100%;max-width:310px;}
-  #rules-panel{width:100%;max-width:310px;margin-left:0;margin-top:10px;transform:translateY(-6px);}
+  #rules-panel{position:relative;left:auto;top:auto;width:100%;max-width:393px;margin-left:0;margin-top:10px;transform:translateY(-6px);}
   #rules-panel.visible{transform:translateY(0);}
 }
 .hidden{display:none !important;}
+
+/* ── ANIMACIÓN DE ENTRADA ── */
+@keyframes cellWave {
+  from { opacity:0; transform:scale(.6) rotate(-6deg); }
+  to   { opacity:1; transform:scale(1)  rotate(0deg);  }
+}
+@keyframes tileRise {
+  from { opacity:0; transform:translateY(22px); }
+  to   { opacity:1; transform:translateY(0);    }
+}
+.cell.anim-in {
+  animation: cellWave .35s cubic-bezier(.34,1.56,.64,1) both;
+}
+.anden-tile.anim-in {
+  animation: tileRise .3s cubic-bezier(.34,1.56,.64,1) both;
+}
+
 </style>
 </head>
 <body>
@@ -238,17 +309,12 @@ button:disabled{opacity: 0.4; cursor: default;}
 </div>
 
 <script>
-// ═══════════════════════════════════════════════════════
-//  CONSTANTES Y ESTADO
-// ═══════════════════════════════════════════════════════
 const N = 4;
 const SHAPES  = ['circle','square','triangle','x','diamond'];
 const COLORS  = ['red','blue','green','yellow','white'];
 const C_HEX   = {red:'#E05252',blue:'#4D6FD1',green:'#4EA84E',yellow:'#D4AE2C',white:'#E8E8E8'};
-const C_EMOJI = {red:'🔴',blue:'🔵',green:'🟢',yellow:'🟡',white:'⬜'};
 const SPRIO   = {square:0, x:1, diamond:2, triangle:3, circle:4};
 
-// Variables de juego
 let grid, anden, won, pieceById, puzzle;
 let history = [];
 let redoStack = [];
@@ -256,6 +322,42 @@ let moveCount = 0;
 let elapsedSeconds = 0;
 let timerStart = null;
 let timerInterval = null;
+
+// --- PERSISTENCIA ---
+function saveGame() {
+  const data = {
+    grid: grid,
+    anden: anden,
+    moveCount: moveCount,
+    elapsedSeconds: elapsedSeconds,
+    won: won,
+    date: new Date().toDateString()
+  };
+  localStorage.setItem('formas_save', JSON.stringify(data));
+}
+
+function loadGame() {
+  const saved = localStorage.getItem('formas_save');
+  if (!saved) return null;
+  const data = JSON.parse(saved);
+  if (data.date !== new Date().toDateString()) return null;
+  return data;
+}
+
+// --- CONFETI ---
+function spawnConfetti() {
+  const colors = ['#E05252','#4D6FD1','#4EA84E','#D4AE2C','#FFF'];
+  for(let i=0; i<60; i++) {
+    const c = document.createElement('div');
+    c.className = 'confetti';
+    c.style.left = Math.random() * 100 + 'vw';
+    c.style.backgroundColor = colors[Math.floor(Math.random()*colors.length)];
+    c.style.animationDuration = (Math.random() * 2 + 2) + 's';
+    c.style.opacity = Math.random();
+    document.body.appendChild(c);
+    setTimeout(() => c.remove(), 4000);
+  }
+}
 
 function startTimer() {
   if (timerInterval) return;
@@ -272,9 +374,6 @@ function formatTime(s) {
   return m + ':' + String(ss).padStart(2,'0');
 }
 
-// ═══════════════════════════════════════════════════════
-//  LÓGICA DE VALIDACIÓN
-// ═══════════════════════════════════════════════════════
 function isValidPos(shape, r, c, blocks) {
   if (blocks && blocks.some(([br,bc]) => br===r && bc===c)) return false;
   const corner = (r===0||r===N-1) && (c===0||c===N-1);
@@ -309,9 +408,6 @@ function allValid(g) {
   return true;
 }
 
-// ═══════════════════════════════════════════════════════
-//  GENERADOR AGRESIVO (SOLUCIÓN ÚNICA)
-// ═══════════════════════════════════════════════════════
 function mkRng(seed) {
   let s = (seed ^ 0x9E3779B9) >>> 0;
   return () => {
@@ -325,7 +421,6 @@ function countSolutions(pieces, blocks, cap) {
   const order = [...Array(pieces.length).keys()].sort((a,b) => SPRIO[pieces[a].shape] - SPRIO[pieces[b].shape]);
   let found = 0;
   const g = Array.from({length:N}, () => Array(N).fill(null));
-
   function search(idx) {
     if (found >= cap) return;
     if (idx === order.length) { if (allValid(g)) found++; return; }
@@ -360,23 +455,18 @@ function buildValidPlacement(pieces, blocks, rng) {
 function genPuzzle(seed) {
   const rng = mkRng(seed);
   for (let attempt = 0; attempt < 100; attempt++) {
-    const nPieces = 6 + (attempt % 2); // Variamos entre 6 y 7 piezas
+    const nPieces = 6 + (attempt % 2);
     const pieces = [];
     const pool = [];
     for (const s of SHAPES) for (const c of COLORS) pool.push({shape:s, color:c});
-    // Shuffle pool
     for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
-    
     for(let i=0; i<nPieces; i++) pieces.push({...pool[i], id: i});
-    
     const blocks = [];
     const solGrid = buildValidPlacement(pieces, blocks, rng);
     if (!solGrid) continue;
-
     let sols = countSolutions(pieces, blocks, 2);
     let pressure = 0;
     while(sols > 1 && pressure < 10) {
-      // Intentamos añadir un bloqueo en una celda vacía que no rompa la solución actual
       let added = false;
       const emptyCells = [];
       for(let r=0; r<N; r++) for(let c=0; c<N; c++) if(!solGrid[r][c] && !blocks.some(b=>b[0]===r && b[1]===c)) emptyCells.push([r,c]);
@@ -384,64 +474,44 @@ function genPuzzle(seed) {
         const b = emptyCells[Math.floor(rng()*emptyCells.length)];
         blocks.push(b);
         sols = countSolutions(pieces, blocks, 2);
-        if(sols === 0) { blocks.pop(); sols = 2; } // Si lo hace imposible, revertimos
+        if(sols === 0) { blocks.pop(); sols = 2; }
         else added = true;
       }
       pressure++;
       if(!added) break;
     }
-
     if (sols === 1) return { pieces, blocks, nPieces: pieces.length, nBlocks: blocks.length };
   }
-  // Fallback seguro
   return { pieces: [{id:0,shape:'square',color:'white'},{id:1,shape:'x',color:'red'}], blocks: [], nPieces:2, nBlocks:0 };
 }
 
-// ═══════════════════════════════════════════════════════
-//  SISTEMA DE HISTORIAL (UNDO/REDO)
-// ═══════════════════════════════════════════════════════
 function saveState() {
   moveCount++;
   const md = document.getElementById('moves-display'); if(md) md.textContent = '· '+moveCount+' mov';
   startTimer();
-  history.push({
-    grid: JSON.parse(JSON.stringify(grid)),
-    anden: [...anden],
-    won: won
-  });
+  history.push({ grid: JSON.parse(JSON.stringify(grid)), anden: [...anden], won: won });
   if (history.length > 50) history.shift();
   redoStack = [];
   updateUndoButtons();
+  saveGame();
 }
 
 function undo() {
   if (history.length === 0) return;
   moveCount++; startTimer();
-  const _md = document.getElementById('moves-display'); if(_md) _md.textContent = '· '+moveCount+' mov';
-  redoStack.push({
-    grid: JSON.parse(JSON.stringify(grid)),
-    anden: [...anden],
-    won: won
-  });
+  redoStack.push({ grid: JSON.parse(JSON.stringify(grid)), anden: [...anden], won: won });
   const prev = history.pop();
   grid = prev.grid; anden = prev.anden; won = prev.won;
-  renderAll();
-  updateUndoButtons();
+  renderAll(); updateUndoButtons(); saveGame();
 }
 
 function redo() {
   if (redoStack.length === 0) return;
   moveCount++; startTimer();
-  const _md = document.getElementById('moves-display'); if(_md) _md.textContent = '· '+moveCount+' mov';
-  history.push({
-    grid: JSON.parse(JSON.stringify(grid)),
-    anden: [...anden],
-    won: won
-  });
+  history.push({ grid: JSON.parse(JSON.stringify(grid)), anden: [...anden], won: won });
   const next = redoStack.pop();
   grid = next.grid; anden = next.anden; won = next.won;
-  renderAll();
-  updateUndoButtons();
+  renderAll(); updateUndoButtons(); saveGame();
 }
 
 function resetGame() {
@@ -450,8 +520,7 @@ function resetGame() {
   grid = Array.from({length:N}, () => Array(N).fill(null));
   anden = puzzle.pieces.map(p => p.id);
   won = false;
-  renderAll();
-  updateUndoButtons();
+  renderAll(); updateUndoButtons(); saveGame();
 }
 
 function updateUndoButtons() {
@@ -459,9 +528,6 @@ function updateUndoButtons() {
   document.getElementById('btn-redo').disabled = redoStack.length === 0;
 }
 
-// ═══════════════════════════════════════════════════════
-//  UI Y RENDERIZADO
-// ═══════════════════════════════════════════════════════
 function shapeSVG(shape, color, size) {
   const f=C_HEX[color], sw=Math.max(1.5,size*.055), hw=size/2;
   const pt=(x,y)=>`${x.toFixed(1)},${y.toFixed(1)}`;
@@ -476,7 +542,6 @@ function shapeSVG(shape, color, size) {
   return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg" style="display:block;pointer-events:none"><g filter="url(#f-lapiz)">${body}</g></svg>`;
 }
 
-// Drag & Drop
 let dragging = null;
 const ghostEl = document.getElementById('ghost');
 function getXY(e) { return e.touches ? [e.touches[0].clientX, e.touches[0].clientY] : [e.clientX, e.clientY]; }
@@ -486,34 +551,29 @@ function dragStart(e, piece, from, fr, fc) {
   const [x,y] = getXY(e);
   dragging = {piece, from, fr, fc};
   ghostEl.innerHTML = shapeSVG(piece.shape, piece.color, 68);
-  ghostEl.style.left = x+'px'; ghostEl.style.top = y+'px'; ghostEl.style.display = 'block';
+  
+  const offsetY = e.touches ? 50 : 0;
+  ghostEl.style.left = x+'px'; ghostEl.style.top = (y - offsetY)+'px'; 
+  ghostEl.style.display = 'block';
+  
   renderAll();
-
-  // --- MODIFICACIÓN: ILUMINAR CASILLAS VÁLIDAS ---
   document.querySelectorAll('.cell').forEach(cell => {
-    const r = +cell.dataset.r;
-    const c = +cell.dataset.c;
-    // Si no es un bloqueo y la posición es válida para esta forma
-    if (!puzzle.blocks.some(b=>b[0]===r && b[1]===c) && isValidPos(piece.shape, r, c)) {
-      cell.classList.add('valid-target');
-    }
+    const r = +cell.dataset.r, c = +cell.dataset.c;
+    if (!puzzle.blocks.some(b=>b[0]===r && b[1]===c) && isValidPos(piece.shape, r, c)) cell.classList.add('valid-target');
   });
 }
 
 function onMove(e) {
   if (!dragging) return;
   const [x,y] = getXY(e);
-  ghostEl.style.left = x+'px'; ghostEl.style.top = y+'px';
+  const offsetY = e.touches ? 50 : 0;
+  ghostEl.style.left = x+'px'; ghostEl.style.top = (y - offsetY)+'px';
   document.querySelectorAll('.cell.valid-hover').forEach(c => c.classList.remove('valid-hover'));
   ghostEl.style.display = 'none';
   const under = document.elementFromPoint(x, y);
   ghostEl.style.display = 'block';
   const cell = under?.closest?.('.cell[data-r]');
-  
-  // Mantenemos el comportamiento de valid-hover, pero aseguramos que solo se aplique si es valid-target
-  if (cell && cell.classList.contains('valid-target')) {
-    cell.classList.add('valid-hover');
-  }
+  if (cell && cell.classList.contains('valid-target')) cell.classList.add('valid-hover');
 }
 
 function onUp(e) {
@@ -526,7 +586,6 @@ function onUp(e) {
 
   if (cellEl) {
     const r = +cellEl.dataset.r, c = +cellEl.dataset.c;
-    // Comprobamos la clase valid-target para asegurar la validez
     if (cellEl.classList.contains('valid-target')) {
       saveState();
       const existing = grid[r][c];
@@ -539,16 +598,10 @@ function onUp(e) {
     grid[dragging.fr][dragging.fc] = null;
     if (!anden.includes(dragging.piece.id)) anden.push(dragging.piece.id);
   }
-
-  // --- MODIFICACIÓN: LIMPIAR RESALTADO AL SOLTAR ---
-  document.querySelectorAll('.cell.valid-target').forEach(cell => {
-    cell.classList.remove('valid-target');
-  });
-
-  dragging = null; renderAll(); updateUndoButtons();
+  document.querySelectorAll('.cell.valid-target').forEach(cell => cell.classList.remove('valid-target'));
+  dragging = null; renderAll(); updateUndoButtons(); saveGame();
 }
 
-// Renderizado General
 function renderGrid() {
   const el=document.getElementById('grid'); el.innerHTML='';
   for (let r=0;r<N;r++) for (let c=0;c<N;c++) {
@@ -593,15 +646,22 @@ function renderProgress() {
   const fill = document.getElementById('progress-fill');
   fill.style.width = (validCount/total*100)+'%';
   document.getElementById('progress-label').textContent = `${validCount}/${total} válidas`;
-  if (validCount===total && placed===total && !won) { won=true; setTimeout(showVictory, 500); }
+  
+  if (validCount===total && placed===total && !won) { 
+    won=true;
+    const g = document.getElementById('game');
+    g.classList.add('victory-sweep');
+    spawnConfetti();
+    // Aumentamos el retraso para dejar que el sweep lento (1.8s) termine casi del todo
+    setTimeout(() => { showVictory(); g.classList.remove('victory-sweep'); }, 2000); 
+  }
   document.getElementById('btn-share').classList.toggle('hidden', !won);
 }
 
 function renderAll() { renderGrid(); renderAnden(); renderProgress(); }
 
 function toggleRules() {
-  const p = document.getElementById('rules-panel');
-  const btn = document.getElementById('btn-toggle');
+  const p = document.getElementById('rules-panel'), btn = document.getElementById('btn-toggle');
   p.classList.toggle('visible'); btn.classList.toggle('open');
   document.getElementById('toggle-icon').textContent = p.classList.contains('visible') ? '✕' : 'ℹ️';
 }
@@ -628,41 +688,83 @@ function share() {
   });
 }
 
-// ═══════════════════════════════════════════════════════
-//  INICIALIZACIÓN
-// ═══════════════════════════════════════════════════════
+
+// ── ANIMACIÓN DE ENTRADA ──
+let _entranceRun = false;
+function playEntranceAnimation() {
+  if (_entranceRun) return;
+  _entranceRun = true;
+  // Ola diagonal desde esquina superior izquierda
+  const cells = document.querySelectorAll('#grid .cell');
+  cells.forEach(cell => {
+    const r = +cell.dataset.r, col = +cell.dataset.c;
+    const delay = (r + col) * 90;
+    cell.style.opacity = '0';
+    cell.style.transform = 'scale(.5) rotate(-8deg)';
+    cell.style.transition = 'none';
+    setTimeout(() => {
+      cell.style.transition = 'opacity .45s ease, transform .45s cubic-bezier(.34,1.56,.64,1)';
+      cell.style.opacity = '1';
+      cell.style.transform = 'scale(1) rotate(0deg)';
+      // Limpia estilos inline tras la animación
+      setTimeout(() => {
+        cell.style.transition = '';
+        cell.style.transform = '';
+        cell.style.opacity = '';
+      }, 500);
+    }, delay);
+  });
+  // Tiles del andén suben después de la ola
+  const maxDelay = (N - 1 + N - 1) * 90 + 500;
+  const tiles = document.querySelectorAll('#anden .anden-tile');
+  tiles.forEach((tile, i) => {
+    tile.style.opacity = '0';
+    tile.style.transform = 'translateY(20px)';
+    tile.style.transition = 'none';
+    setTimeout(() => {
+      tile.style.transition = 'opacity .4s ease, transform .4s cubic-bezier(.34,1.56,.64,1)';
+      tile.style.opacity = '1';
+      tile.style.transform = 'translateY(0)';
+      setTimeout(() => {
+        tile.style.transition = '';
+        tile.style.transform = '';
+        tile.style.opacity = '';
+      }, 350);
+    }, maxDelay + i * 70);
+  });
+}
+
 window.onload = () => {
   const seed = new Date().getFullYear()*10000+(new Date().getMonth()+1)*100+new Date().getDate();
   puzzle = genPuzzle(seed);
   pieceById = Object.fromEntries(puzzle.pieces.map(p=>[p.id,p]));
-  grid = Array.from({length:N}, () => Array(N).fill(null));
-  anden = puzzle.pieces.map(p => p.id);
-  won = false;
-  moveCount = 0; elapsedSeconds = 0; stopTimer(); timerInterval = null;
-  const tdisp = document.getElementById('timer-display'); if(tdisp) tdisp.textContent='0:00';
-  const mdisp = document.getElementById('moves-display'); if(mdisp) mdisp.textContent='· 0 mov';
   
+  const saved = loadGame();
+  if (saved) {
+    grid = saved.grid; anden = saved.anden; moveCount = saved.moveCount;
+    elapsedSeconds = saved.elapsedSeconds; won = saved.won;
+    if (!won) startTimer();
+  } else {
+    grid = Array.from({length:N}, () => Array(N).fill(null));
+    anden = puzzle.pieces.map(p => p.id);
+    won = false; moveCount = 0; elapsedSeconds = 0;
+  }
+  
+  const tdisp = document.getElementById('timer-display'); if(tdisp) tdisp.textContent=formatTime(elapsedSeconds);
+  const mdisp = document.getElementById('moves-display'); if(mdisp) mdisp.textContent='· '+moveCount+' mov';
   document.getElementById('subtitle').textContent = `#${Math.floor(Date.now()/86400000)} · ${new Date().toLocaleDateString()}`;
-  
-  
   SHAPES.forEach(s => { const el=document.getElementById('ri-'+s); if(el) el.innerHTML=shapeSVG(s,'white',18); });
-  
   document.addEventListener('mousemove', onMove);
   document.addEventListener('touchmove', onMove, {passive:false});
   document.addEventListener('mouseup', onUp);
   document.addEventListener('touchend', onUp);
-  
   updateUndoButtons();
   renderAll();
 };
 </script>
-</body>
-</html><!-- GOD MODE — Konami: ↑↑↓↓←→←→BA -->
+
 <div id="god-panel">
-  <div id="god-header">
-    <span>⚡ MODO DIOS</span>
-    <button onclick="document.getElementById('god-panel').classList.remove('god-visible')" style="background:none;border:none;color:#fff;font-size:16px;cursor:pointer;padding:0 4px">✕</button>
-  </div>
+  <div id="god-header"><span>⚡ MODO DIOS</span><button onclick="document.getElementById('god-panel').classList.remove('god-visible')" style="background:none;border:none;color:#fff;font-size:16px;cursor:pointer;padding:0 4px">✕</button></div>
   <div class="god-section">
     <div class="god-label">SEED DEL PUZZLE</div>
     <div style="display:flex;gap:6px;margin-top:5px">
@@ -681,12 +783,7 @@ window.onload = () => {
     <button class="god-btn god-btn-full" onclick="godToggleBlockEdit()">🔲 <span id="god-block-label">Editar bloqueos ON</span></button>
     <button class="god-btn god-btn-full" onclick="godClearBoard()">🗑 Vaciar tablero</button>
   </div>
-  <div class="god-section">
-    <div class="god-label">INFO</div>
-    <div id="god-info" style="font-size:10px;color:#aaa;font-family:monospace;line-height:1.8;margin-top:4px"></div>
-  </div>
 </div>
-
 <style>
 #god-panel{display:none;position:fixed;top:20px;right:20px;width:230px;background:#111;color:#eee;border-radius:12px;border:1px solid #333;box-shadow:0 8px 32px rgba(0,0,0,.6);z-index:99999;font-family:'Jost',sans-serif;overflow:hidden;}
 #god-panel.god-visible{display:block;}
@@ -697,7 +794,6 @@ window.onload = () => {
 .god-btn:hover{background:#2a5090;}
 .god-btn-full{width:100%;text-align:left;}
 </style>
-
 <script>
 (function(){
   const KONAMI=['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','b','a'];
@@ -706,249 +802,113 @@ window.onload = () => {
     kIdx=(e.key===KONAMI[kIdx])?kIdx+1:(e.key===KONAMI[0]?1:0);
     if(kIdx===KONAMI.length){kIdx=0;godToggle();}
   });
-
-  let blockEditMode=false;
-
-  window.godToggle=function(){
-    const p=document.getElementById('god-panel');
-    p.classList.toggle('god-visible');
-    if(p.classList.contains('god-visible'))godUpdateInfo();
+  window.godToggle=()=>document.getElementById('god-panel').classList.toggle('god-visible');
+  window.godRegenerate=()=>{
+    const s=parseInt(document.getElementById('god-seed').value)||new Date().getFullYear()*10000+(new Date().getMonth()+1)*100+new Date().getDate();
+    puzzle=genPuzzle(s); pieceById=Object.fromEntries(puzzle.pieces.map(p=>[p.id,p]));
+    grid=Array.from({length:N},()=>Array(N).fill(null)); anden=puzzle.pieces.map(p=>p.id);
+    won=false; history=[]; redoStack=[]; renderAll(); updateUndoButtons(); saveGame();
   };
-
-  window.godUpdateInfo=function(){
-    const today=new Date().getFullYear()*10000+(new Date().getMonth()+1)*100+new Date().getDate();
-    document.getElementById('god-info').innerHTML=
-      `Seed hoy: <b style="color:#7eb8f7">${today}</b><br>`+
-      `Piezas: <b style="color:#7eb8f7">${puzzle.nPieces}</b><br>`+
-      `Bloqueadas: <b style="color:#7eb8f7">${puzzle.nBlocks}</b><br>`+
-      `Celdas libres: <b style="color:#7eb8f7">${N*N-puzzle.nBlocks}</b>`;
-  };
-
-  function getSeed(){
-    const v=parseInt(document.getElementById('god-seed').value);
-    return isNaN(v)?new Date().getFullYear()*10000+(new Date().getMonth()+1)*100+new Date().getDate():v;
-  }
-
-  window.godRegenerate=function(){
-    puzzle=genPuzzle(getSeed());
-    pieceById=Object.fromEntries(puzzle.pieces.map(p=>[p.id,p]));
-    grid=Array.from({length:N},()=>Array(N).fill(null));
-    anden=puzzle.pieces.map(p=>p.id);
-    won=false;history=[];redoStack=[];
-    blockEditMode=false;
-    document.getElementById('god-block-label').textContent='Editar bloqueos ON';
-    document.getElementById('grid').onclick=null;
-    updateUndoButtons();renderAll();godUpdateInfo();
-  };
-
-  window.godRandomSeed=function(){
-    document.getElementById('god-seed').value=Math.floor(Math.random()*99999999);
-    godRegenerate();
-  };
-
-  window.godShowSolution=function(){
-    const rng=mkRng(getSeed());
-    const sol=buildValidPlacement(puzzle.pieces,puzzle.blocks,rng);
-    if(!sol){alert('No se pudo calcular la solución');return;}
+  window.godRandomSeed=()=>{ document.getElementById('god-seed').value=Math.floor(Math.random()*99999999); godRegenerate(); };
+  window.godShowSolution=()=>{
+    const s=parseInt(document.getElementById('god-seed').value)||new Date().getFullYear()*10000+(new Date().getMonth()+1)*100+new Date().getDate();
+    const sol=buildValidPlacement(puzzle.pieces,puzzle.blocks,mkRng(s));
+    if(!sol)return;
     document.querySelectorAll('.cell[data-r]').forEach(cell=>{
-      const r=+cell.dataset.r,c=+cell.dataset.c;
-      if(puzzle.blocks.some(([br,bc])=>br===r&&bc===c))return;
-      const p=sol[r][c];
-      if(p){cell.style.outline='3px solid #7eb8f7';cell.title=`${p.shape} · ${p.color}`;}
+      const r=+cell.dataset.r,c=+cell.dataset.c; const p=sol[r][c];
+      if(p){cell.style.outline='3px solid #7eb8f7';}
     });
-    setTimeout(()=>{document.querySelectorAll('.cell[data-r]').forEach(c=>{c.style.outline='';c.title='';});},3000);
+    setTimeout(()=>document.querySelectorAll('.cell[data-r]').forEach(c=>c.style.outline=''),3000);
   };
-
-  window.godPlaceSolution=function(){
-    const rng=mkRng(getSeed());
-    const sol=buildValidPlacement(puzzle.pieces,puzzle.blocks,rng);
-    if(!sol){alert('No se pudo calcular la solución');return;}
-    saveState();
-    grid=sol.map(row=>[...row]);
-    anden=[];won=false;
-    renderAll();updateUndoButtons();
+  window.godPlaceSolution=()=>{
+    const s=parseInt(document.getElementById('god-seed').value)||new Date().getFullYear()*10000+(new Date().getMonth()+1)*100+new Date().getDate();
+    const sol=buildValidPlacement(puzzle.pieces,puzzle.blocks,mkRng(s));
+    if(!sol)return; saveState(); grid=sol; anden=[]; renderAll(); updateUndoButtons(); saveGame();
   };
-
-  window.godToggleBlockEdit=function(){
-    blockEditMode=!blockEditMode;
-    document.getElementById('god-block-label').textContent=blockEditMode?'Editar bloqueos OFF':'Editar bloqueos ON';
-    document.getElementById('grid').onclick=blockEditMode?function(e){
-      const cell=e.target.closest('.cell[data-r]');
-      if(!cell)return;
-      const r=+cell.dataset.r,c=+cell.dataset.c;
-      if(grid[r][c])return;
-      const idx=puzzle.blocks.findIndex(([br,bc])=>br===r&&bc===c);
-      if(idx>=0){puzzle.blocks.splice(idx,1);puzzle.nBlocks--;}
-      else{puzzle.blocks.push([r,c]);puzzle.nBlocks++;}
-      renderAll();godUpdateInfo();
-    }:null;
-  };
-
-  window.godClearBoard=function(){
-    saveState();
-    grid=Array.from({length:N},()=>Array(N).fill(null));
-    anden=puzzle.pieces.map(p=>p.id);
-    won=false;renderAll();updateUndoButtons();
-  };
+  window.godClearBoard=()=>{ saveState(); grid=Array.from({length:N},()=>Array(N).fill(null)); anden=puzzle.pieces.map(p=>p.id); renderAll(); saveGame(); };
 })();
 </script>
 
-<!-- ══════════════════════════════════════════
-     TUTORIAL — slides al cargar, saltable
-══════════════════════════════════════════ -->
-<div id="tutorial-bg">
+<div id="tutorial-bg" class="hidden">
   <div id="tutorial-box">
-
-    <!-- Slide 1: Bienvenida -->
     <div class="t-slide" id="t-slide-0">
-      <div class="t-icon">🔷</div>
-      <div class="t-title">FORMAS</div>
-      <div class="t-sub">Puzzle diario de lógica</div>
-      <div class="t-body">
-        Coloca todas las fichas en el tablero de forma que cada una esté en una posición <strong>válida</strong> según su forma y su color.<br><br>
-        Cuando todas muestren <strong style="color:#52B052">✓</strong>, habrás ganado.
-      </div>
+      <div class="t-icon">🔷</div><div class="t-title">FORMAS</div><div class="t-sub">Puzzle diario de lógica</div>
+      <div class="t-body">Coloca todas las fichas en el tablero de forma que cada una esté en una posición <strong>válida</strong>. Cuando todas tengan <strong style="color:#52B052">✓</strong>, habrás ganado.</div>
     </div>
-
-    <!-- Slide 2: Reglas de forma -->
     <div class="t-slide hidden" id="t-slide-1">
-      <div class="t-title">Reglas de forma</div>
-      <div class="t-sub">Cada forma solo puede ir en ciertas casillas</div>
+      <div class="t-title">Reglas de forma</div><div class="t-sub">Cada forma tiene su lugar</div>
       <div class="t-rules">
-        <div class="t-rule"><div class="t-shape-icon" id="ti-circle"></div><div><b>Círculo</b> — cualquier casilla</div></div>
-        <div class="t-rule"><div class="t-shape-icon" id="ti-square"></div><div><b>Cuadrado</b> — solo las 4 esquinas</div></div>
-        <div class="t-rule"><div class="t-shape-icon" id="ti-triangle"></div><div><b>Triángulo</b> — borde, no esquinas</div></div>
-        <div class="t-rule"><div class="t-shape-icon" id="ti-x"></div><div><b>Cruz</b> — interior 2×2 central</div></div>
-        <div class="t-rule"><div class="t-shape-icon" id="ti-diamond"></div><div><b>Rombo</b> — casillas donde fila+col es par</div></div>
+        <div class="t-rule"><div class="t-shape-icon" id="ti-circle"></div><div><b>Círculo</b> — libre</div></div>
+        <div class="t-rule"><div class="t-shape-icon" id="ti-square"></div><div><b>Cuadrado</b> — esquinas</div></div>
+        <div class="t-rule"><div class="t-shape-icon" id="ti-triangle"></div><div><b>Triángulo</b> — bordes</div></div>
+        <div class="t-rule"><div class="t-shape-icon" id="ti-x"></div><div><b>Cruz</b> — centro</div></div>
+        <div class="t-rule"><div class="t-shape-icon" id="ti-diamond"></div><div><b>Rombo</b> — par</div></div>
       </div>
     </div>
-
-    <!-- Slide 3: Reglas de color -->
     <div class="t-slide hidden" id="t-slide-2">
-      <div class="t-title">Reglas de color</div>
-      <div class="t-sub">Cada color tiene un aura relacional</div>
+      <div class="t-title">Reglas de color</div><div class="t-sub">Relaciones entre fichas</div>
       <div class="t-rules">
-        <div class="t-rule"><div class="t-dot" style="background:#E05252"></div><div><b>Rojo</b> — inválido si tiene vecino directo</div></div>
-        <div class="t-rule"><div class="t-dot" style="background:#4D6FD1"></div><div><b>Azul</b> — inválido si hay Verde en su fila</div></div>
-        <div class="t-rule"><div class="t-dot" style="background:#4EA84E"></div><div><b>Verde</b> — inválido si hay Azul en su columna</div></div>
-        <div class="t-rule"><div class="t-dot" style="background:#D4AE2C"></div><div><b>Amarillo</b> — anula las auras de sus vecinos</div></div>
-        <div class="t-rule"><div class="t-dot" style="background:#E0E0E0"></div><div><b>Blanco</b> — sin aura, siempre válido</div></div>
+        <div class="t-rule"><div class="t-dot" style="background:#E05252"></div><div><b>Rojo</b> — sin vecinos</div></div>
+        <div class="t-rule"><div class="t-dot" style="background:#4D6FD1"></div><div><b>Azul</b> — no verde en fila</div></div>
+        <div class="t-rule"><div class="t-dot" style="background:#4EA84E"></div><div><b>Verde</b> — no azul en col</div></div>
+        <div class="t-rule"><div class="t-dot" style="background:#D4AE2C"></div><div><b>Amarillo</b> — anula vecinos</div></div>
       </div>
     </div>
-
-    <!-- Slide 4: Cómo ganar -->
     <div class="t-slide hidden" id="t-slide-3">
-      <div class="t-icon">🏆</div>
-      <div class="t-title">Cómo ganar</div>
-      <div class="t-body">
-        Arrastra las fichas del andén al tablero.<br><br>
-        Las casillas con <span style="color:#4D6FD1;font-weight:700">borde azul punteado</span> son posiciones válidas para esa forma.<br><br>
-        Cada ficha muestra <strong style="color:#52B052">✓</strong> cuando cumple <em>todas</em> sus reglas simultáneamente.<br><br>
-        Consigue que <strong>todas</strong> estén en ✓ al mismo tiempo.
-      </div>
-      <div style="background:#F4EFE0;
-  background-image:
-    linear-gradient(rgba(80,80,160,.09) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(80,80,160,.09) 1px, transparent 1px);
-  background-size:22px 22px;border-radius:8px;padding:10px 14px;font-size:11px;color:#888;margin-top:8px">
-        💡 Las casillas <strong style="color:#2A2A2A">■ negras</strong> están bloqueadas — nadie puede ir ahí.
-      </div>
+      <div class="t-icon">🏆</div><div class="t-title">Cómo ganar</div>
+      <div class="t-body">Arrastra las fichas al tablero. El borde <span style="color:#4D6FD1;font-weight:700">azul punteado</span> te indica dónde es válida la forma. ¡Suerte!</div>
     </div>
-
-    <!-- Navegación -->
     <div id="t-nav">
-      <div id="t-dots">
-        <span class="t-dot-nav active" onclick="goSlide(0)"></span>
-        <span class="t-dot-nav" onclick="goSlide(1)"></span>
-        <span class="t-dot-nav" onclick="goSlide(2)"></span>
-        <span class="t-dot-nav" onclick="goSlide(3)"></span>
-      </div>
-      <div style="display:flex;gap:8px">
-        <button class="t-btn-skip" onclick="closeTutorial()">Saltar</button>
-        <button class="t-btn-next" id="t-btn-next" onclick="nextSlide()">Siguiente →</button>
-      </div>
+      <div id="t-dots"><span class="t-dot-nav active" onclick="goSlide(0)"></span><span class="t-dot-nav" onclick="goSlide(1)"></span><span class="t-dot-nav" onclick="goSlide(2)"></span><span class="t-dot-nav" onclick="goSlide(3)"></span></div>
+      <div style="display:flex;gap:8px"><button class="t-btn-skip" onclick="closeTutorial()">Saltar</button><button class="t-btn-next" id="t-btn-next" onclick="nextSlide()">Siguiente</button></div>
     </div>
-
   </div>
 </div>
-
 <style>
-#tutorial-bg{
-  position:fixed;inset:0;background:rgba(0,0,0,.55);
-  display:flex;align-items:center;justify-content:center;
-  z-index:10000;padding:16px;
-}
-#tutorial-bg.hidden{display:none;}
-#tutorial-box{
-  background:#FFF;border-radius:20px;padding:28px 24px;
-  max-width:340px;width:100%;
-  box-shadow:0 24px 70px rgba(0,0,0,.3);
-  font-family:'Jost',sans-serif;
-}
-.t-slide{ min-height:240px;display:flex;flex-direction:column; }
-.t-icon{ font-size:40px;text-align:center;margin-bottom:10px; }
-.t-title{ font-size:20px;font-weight:900;color:#1A1A1A;letter-spacing:2px;text-align:center;margin-bottom:4px; }
-.t-sub{ font-size:11px;color:#AAAAAA;text-align:center;letter-spacing:.5px;margin-bottom:10px; }
-.t-body{ font-size:13px;color:#555;line-height:1.7; }
-.t-rules{ display:flex;flex-direction:column;gap:9px; }
-.t-rule{ display:flex;align-items:center;gap:10px;font-size:12px;color:#444; }
-.t-shape-icon{ width:28px;height:28px;flex-shrink:0;display:flex;align-items:center;justify-content:center; }
-.t-dot{ width:14px;height:14px;border-radius:50%;border:2px solid #2A2A2A;flex-shrink:0; }
-#t-nav{ display:flex;align-items:center;justify-content:space-between;margin-top:22px; }
-#t-dots{ display:flex;gap:6px;align-items:center; }
-.t-dot-nav{
-  width:7px;height:7px;border-radius:50%;background:#E0E0E0;cursor:pointer;
-  transition:background .2s;
-}
-.t-dot-nav.active{ background:#1A1A1A; }
-.t-btn-skip{
-  background:none;border:none;font-family:'Jost',sans-serif;
-  font-size:12px;color:#BBBBBB;cursor:pointer;padding:8px 10px;
-}
-.t-btn-skip:hover{ color:#888; }
-.t-btn-next{
-  background:#1A1A1A;color:#FFF;border:none;border-radius:8px;
-  font-family:'Jost',sans-serif;font-size:12px;font-weight:700;
-  padding:8px 16px;cursor:pointer;letter-spacing:.5px;
-  transition:background .15s;
-}
-.t-btn-next:hover{ background:#333; }
+#tutorial-bg{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:10000;padding:16px;}
+#tutorial-box{background:#FFF;border-radius:20px;padding:28px 24px;max-width:340px;width:100%;box-shadow:0 24px 70px rgba(0,0,0,.3);font-family:'Jost',sans-serif;}
+.t-slide{min-height:240px;display:flex;flex-direction:column;}
+.t-icon{font-size:40px;text-align:center;margin-bottom:10px;}
+.t-title{font-size:20px;font-weight:900;color:#1A1A1A;letter-spacing:2px;text-align:center;margin-bottom:4px;}
+.t-sub{font-size:11px;color:#AAAAAA;text-align:center;margin-bottom:10px;}
+.t-body{font-size:13px;color:#555;line-height:1.7;}
+.t-rules{display:flex;flex-direction:column;gap:9px;}
+.t-rule{display:flex;align-items:center;gap:10px;font-size:12px;}
+.t-shape-icon{width:28px;height:28px;display:flex;align-items:center;justify-content:center;}
+.t-dot{width:14px;height:14px;border-radius:50%;border:2px solid #2A2A2A;}
+#t-nav{display:flex;align-items:center;justify-content:space-between;margin-top:22px;}
+#t-dots{display:flex;gap:6px;}
+.t-dot-nav{width:7px;height:7px;border-radius:50%;background:#E0E0E0;cursor:pointer;}
+.t-dot-nav.active{background:#1A1A1A;}
+.t-btn-skip{background:none;border:none;font-size:12px;color:#BBB;cursor:pointer;}
+.t-btn-next{background:#1A1A1A;color:#FFF;border:none;border-radius:8px;font-size:12px;font-weight:700;padding:8px 16px;cursor:pointer;}
 </style>
-
 <script>
 (function(){
-  let currentSlide = 0;
-  const total = 4;
-
-  // Inject SVG icons into tutorial slides
-  function injectTutorialIcons() {
-    ['circle','square','triangle','x','diamond'].forEach(s => {
-      const el = document.getElementById('ti-'+s);
-      if (el) el.innerHTML = shapeSVG(s, 'white', 24);
-    });
-  }
-
-  window.goSlide = function(n) {
-    document.getElementById('t-slide-'+currentSlide).classList.add('hidden');
-    currentSlide = n;
-    document.getElementById('t-slide-'+currentSlide).classList.remove('hidden');
-    document.querySelectorAll('.t-dot-nav').forEach((d,i) => d.classList.toggle('active', i===currentSlide));
-    document.getElementById('t-btn-next').textContent = currentSlide === total-1 ? '¡Jugar! 🎯' : 'Siguiente →';
+  let curr = 0; const tot = 4;
+  window.goSlide = (n) => {
+    document.getElementById('t-slide-'+curr).classList.add('hidden'); curr = n;
+    document.getElementById('t-slide-'+curr).classList.remove('hidden');
+    document.querySelectorAll('.t-dot-nav').forEach((d,i)=>d.classList.toggle('active',i===curr));
+    document.getElementById('t-btn-next').textContent = curr === tot-1 ? '¡Jugar!' : 'Siguiente';
   };
-
-  window.nextSlide = function() {
-    if (currentSlide < total-1) goSlide(currentSlide+1);
-    else closeTutorial();
-  };
-
-  window.closeTutorial = function() {
+  window.nextSlide = () => { if(curr < tot-1) goSlide(curr+1); else closeTutorial(); };
+  window.closeTutorial = () => {
     document.getElementById('tutorial-bg').classList.add('hidden');
+    localStorage.setItem('formas_tutorial', 'true');
+    document.getElementById('grid').style.visibility = 'visible';
+    document.getElementById('anden').style.visibility = 'visible';
+    setTimeout(playEntranceAnimation, 80);
   };
-
-  // Show on load
   window.addEventListener('load', () => {
-    injectTutorialIcons();
-    document.getElementById('tutorial-bg').classList.remove('hidden');
+    ['circle','square','triangle','x','diamond'].forEach(s=>{const el=document.getElementById('ti-'+s); if(el)el.innerHTML=shapeSVG(s,'white',24);});
+    if(!localStorage.getItem('formas_tutorial')) {
+      document.getElementById('tutorial-bg').classList.remove('hidden');
+      document.getElementById('grid').style.visibility = 'hidden';
+      document.getElementById('anden').style.visibility = 'hidden';
+    }
   });
 })();
 </script>
+</body>
+</html>
