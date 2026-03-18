@@ -147,7 +147,7 @@ h1{font-family:'Schoolbell',cursive;font-size:46px;font-weight:400;color:#1A3A60
   background:#FFFEF5;border:1.5px solid #D0C8A8;border-radius:8px;cursor:grab;
   transition:transform .1s,box-shadow .1s;
 }
-.anden-tile{touch-action:none;}.anden-tile:hover{box-shadow:0 2px 8px rgba(0,0,0,.1);transform:translateY(-1px);}
+.anden-tile{touch-action:none;}.anden-tile:hover{box-shadow:0 2px 8px rgba(0,0,0,.1);}
 .anden-tile.dragging{opacity:.12;}
 .anden-empty{color:#CCC;font-size:11px;font-style:italic;align-self:center;}
 
@@ -190,7 +190,7 @@ button:disabled{opacity: 0.4; cursor: default;}
 .rules-divider{height:1px;background:#F4F4F4;margin:9px 0;}
 .rules-note{font-size:9px;color:#CCCCCC;line-height:1.5;margin-top:8px;}
 
-#ghost{position:fixed;pointer-events:none;z-index:9999;display:none;transform:translate(-50%,-50%) scale(1.18);filter:drop-shadow(0 8px 20px rgba(0,0,0,.28));}
+#ghost{position:fixed;pointer-events:none;z-index:9999;display:none;transform:translate(-50%,-65%) scale(1.1);filter:drop-shadow(0 8px 20px rgba(0,0,0,.28));}
 
 .victory-bg{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:200;}
 .victory-box{background:#FFFEF5;border:1.5px solid #D0C8A8;border-radius:20px;padding:28px 24px;text-align:center;max-width:300px;width:100%;margin:16px;box-shadow:0 24px 70px rgba(0,0,0,.3);animation:popIn .4s cubic-bezier(.34,1.56,.64,1);}
@@ -552,8 +552,7 @@ function dragStart(e, piece, from, fr, fc) {
   dragging = {piece, from, fr, fc};
   ghostEl.innerHTML = shapeSVG(piece.shape, piece.color, 68);
   
-  const offsetY = e.touches ? 50 : 0;
-  ghostEl.style.left = x+'px'; ghostEl.style.top = (y - offsetY)+'px'; 
+  ghostEl.style.left = x+'px'; ghostEl.style.top = y+'px';
   ghostEl.style.display = 'block';
   
   renderAll();
@@ -567,8 +566,7 @@ function onMove(e) {
   if (!dragging) return;
   e.preventDefault();
   const [x,y] = getXY(e);
-  const offsetY = e.touches ? 50 : 0;
-  ghostEl.style.left = x+'px'; ghostEl.style.top = (y - offsetY)+'px';
+  ghostEl.style.left = x+'px'; ghostEl.style.top = y+'px';
   document.querySelectorAll('.cell.valid-hover').forEach(c => c.classList.remove('valid-hover'));
   ghostEl.style.display = 'none';
   const under = document.elementFromPoint(x, y);
