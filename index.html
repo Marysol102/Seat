@@ -544,32 +544,30 @@ function shapeSVG(shape, color, size) {
 
 let dragging = null;
 const ghostEl = document.getElementById('ghost');
-function getXY(e) { return e.touches ? [e.touches[0].clientX, e.touches[0].clientY] : [e.clientX, e.clientY]; }
-
 function dragStart(e, piece, from, fr, fc) {
   e.preventDefault();
-  const [x,y] = getXY(e);
   dragging = {piece, from, fr, fc};
   ghostEl.innerHTML = shapeSVG(piece.shape, piece.color, 68);
-  
-  ghostEl.style.left = x+'px'; ghostEl.style.top = y+'px';
+  ghostEl.style.left = e.clientX+'px';
+  ghostEl.style.top  = e.clientY+'px';
   ghostEl.style.display = 'block';
-  
+  e.target.setPointerCapture(e.pointerId);
   renderAll();
   document.querySelectorAll('.cell').forEach(cell => {
-    const r = +cell.dataset.r, c = +cell.dataset.c;
-    if (!puzzle.blocks.some(b=>b[0]===r && b[1]===c) && isValidPos(piece.shape, r, c)) cell.classList.add('valid-target');
+    const r = +cell.dataset.r, cv = +cell.dataset.c;
+    if (!puzzle.blocks.some(b=>b[0]===r && b[1]===cv) && isValidPos(piece.shape, r, cv))
+      cell.classList.add('valid-target');
   });
 }
 
 function onMove(e) {
   if (!dragging) return;
   e.preventDefault();
-  const [x,y] = getXY(e);
-  ghostEl.style.left = x+'px'; ghostEl.style.top = y+'px';
+  ghostEl.style.left = e.clientX+'px';
+  ghostEl.style.top  = e.clientY+'px';
   document.querySelectorAll('.cell.valid-hover').forEach(c => c.classList.remove('valid-hover'));
   ghostEl.style.display = 'none';
-  const under = document.elementFromPoint(x, y);
+  const under = document.elementFromPoint(e.clientX, e.clientY);
   ghostEl.style.display = 'block';
   const cell = under?.closest?.('.cell[data-r]');
   if (cell && cell.classList.contains('valid-target')) cell.classList.add('valid-hover');
@@ -577,21 +575,17 @@ function onMove(e) {
 
 function onUp(e) {
   if (!dragging) return;
-  const [x,y] = e.changedTouches ? [e.changedTouches[0].clientX, e.changedTouches[0].clientY] : [e.clientX, e.clientY];
   ghostEl.style.display = 'none';
-  const under = document.elementFromPoint(x, y);
-  const cellEl = under?.closest?.('.cell[data-r]');
+  const under = document.elementFromPoint(e.clientX, e.clientY);
+  const cellEl   = under?.closest?.('.cell[data-r]');
   const andenZone = under?.closest?.('#anden');
-
-  if (cellEl) {
-    const r = +cellEl.dataset.r, c = +cellEl.dataset.c;
-    if (cellEl.classList.contains('valid-target')) {
-      saveState();
-      const existing = grid[r][c];
-      if (dragging.from==='grid') grid[dragging.fr][dragging.fc] = existing;
-      else { anden=anden.filter(id=>id!==dragging.piece.id); if(existing) anden.push(existing.id); }
-      grid[r][c] = dragging.piece;
-    }
+  if (cellEl && cellEl.classList.contains('valid-target')) {
+    const r = +cellEl.dataset.r, cv = +cellEl.dataset.c;
+    saveState();
+    const existing = grid[r][cv];
+    if (dragging.from==='grid') grid[dragging.fr][dragging.fc] = existing;
+    else { anden=anden.filter(id=>id!==dragging.piece.id); if(existing) anden.push(existing.id); }
+    grid[r][cv] = dragging.piece;
   } else if (andenZone && dragging.from==='grid') {
     saveState();
     grid[dragging.fr][dragging.fc] = null;
@@ -613,8 +607,7 @@ function renderGrid() {
       const wrap=document.createElement('div'); wrap.className='piece-wrap';
       if (dragging?.piece.id===p.id) wrap.classList.add('dragging');
       wrap.innerHTML=shapeSVG(p.shape,p.color,56);
-      wrap.addEventListener('mousedown', e=>dragStart(e,p,'grid',r,c));
-      wrap.addEventListener('touchstart', e=>dragStart(e,p,'grid',r,c), {passive:false});
+      wrap.addEventListener('pointerdown', e=>dragStart(e,p,'grid',r,c));
       const ind=document.createElement('span'); ind.className='cell-indicator'; ind.style.color=v?'#52B052':'#E05252'; ind.textContent=v?'✓':'✗';
       cell.appendChild(wrap); cell.appendChild(ind);
     }
@@ -632,8 +625,7 @@ function renderAnden() {
     const div=document.createElement('div'); div.className='anden-tile';
     if (dragging?.piece.id===id) div.classList.add('dragging');
     div.innerHTML=shapeSVG(p.shape,p.color,36);
-    div.addEventListener('mousedown', e=>dragStart(e,p,'anden'));
-    div.addEventListener('touchstart', e=>dragStart(e,p,'anden'), {passive:false});
+    div.addEventListener('pointerdown', e=>dragStart(e,p,'anden'));
     el.appendChild(div);
   });
 }
@@ -762,10 +754,9 @@ window.onload = () => {
   const mdisp = document.getElementById('moves-display'); if(mdisp) mdisp.textContent='· '+moveCount+' mov';
   document.getElementById('subtitle').textContent = `#${Math.floor(Date.now()/86400000)} · ${new Date().toLocaleDateString()}`;
   SHAPES.forEach(s => { const el=document.getElementById('ri-'+s); if(el) el.innerHTML=shapeSVG(s,'white',18); });
-  document.addEventListener('mousemove', onMove);
-  document.addEventListener('touchmove', onMove, {passive:false});
-  document.addEventListener('mouseup', onUp);
-  document.addEventListener('touchend', onUp);
+  document.addEventListener('pointermove', onMove);
+  document.addEventListener('pointerup', onUp);
+  document.addEventListener('pointercancel', onUp);
   updateUndoButtons();
   renderAll();
 };
