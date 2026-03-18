@@ -544,55 +544,90 @@ function shapeSVG(shape, color, size) {
 
 let dragging = null;
 const ghostEl = document.getElementById('ghost');
-function dragStart(e, piece, from, fr, fc) {
-  e.preventDefault();
-  dragging = {piece, from, fr, fc};
+
+// ── coordenadas normalizadas (mouse o touch) ──
+function getCoords(e) {
+  if (e.touches && e.touches.length)
+    return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  if (e.changedTouches && e.changedTouches.length)
+    return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
+  return { x: e.clientX, y: e.clientY };
+}
+
+function _startDrag(piece, from, fr, fc, x, y) {
+  dragging = { piece, from, fr, fc };
   ghostEl.innerHTML = shapeSVG(piece.shape, piece.color, 68);
-  ghostEl.style.left = e.clientX+'px';
-  ghostEl.style.top  = e.clientY+'px';
+  ghostEl.style.left    = x + 'px';
+  ghostEl.style.top     = y + 'px';
   ghostEl.style.display = 'block';
-  e.target.setPointerCapture(e.pointerId);
   renderAll();
-  document.querySelectorAll('.cell').forEach(cell => {
+  // marcar celdas válidas
+  document.querySelectorAll('.cell[data-r]').forEach(cell => {
     const r = +cell.dataset.r, cv = +cell.dataset.c;
-    if (!puzzle.blocks.some(b=>b[0]===r && b[1]===cv) && isValidPos(piece.shape, r, cv))
+    if (!puzzle.blocks.some(b => b[0]===r && b[1]===cv) && isValidPos(piece.shape, r, cv))
       cell.classList.add('valid-target');
   });
 }
 
-function onMove(e) {
+function _moveDrag(x, y) {
   if (!dragging) return;
-  e.preventDefault();
-  ghostEl.style.left = e.clientX+'px';
-  ghostEl.style.top  = e.clientY+'px';
+  ghostEl.style.left = x + 'px';
+  ghostEl.style.top  = y + 'px';
+  // hover highlight
   document.querySelectorAll('.cell.valid-hover').forEach(c => c.classList.remove('valid-hover'));
   ghostEl.style.display = 'none';
-  const under = document.elementFromPoint(e.clientX, e.clientY);
+  const under = document.elementFromPoint(x, y);
   ghostEl.style.display = 'block';
   const cell = under?.closest?.('.cell[data-r]');
   if (cell && cell.classList.contains('valid-target')) cell.classList.add('valid-hover');
 }
 
-function onUp(e) {
+function _endDrag(x, y) {
   if (!dragging) return;
   ghostEl.style.display = 'none';
-  const under = document.elementFromPoint(e.clientX, e.clientY);
+  const under    = document.elementFromPoint(x, y);
   const cellEl   = under?.closest?.('.cell[data-r]');
   const andenZone = under?.closest?.('#anden');
   if (cellEl && cellEl.classList.contains('valid-target')) {
     const r = +cellEl.dataset.r, cv = +cellEl.dataset.c;
     saveState();
     const existing = grid[r][cv];
-    if (dragging.from==='grid') grid[dragging.fr][dragging.fc] = existing;
-    else { anden=anden.filter(id=>id!==dragging.piece.id); if(existing) anden.push(existing.id); }
+    if (dragging.from === 'grid') grid[dragging.fr][dragging.fc] = existing;
+    else { anden = anden.filter(id => id !== dragging.piece.id); if (existing) anden.push(existing.id); }
     grid[r][cv] = dragging.piece;
-  } else if (andenZone && dragging.from==='grid') {
+  } else if (andenZone && dragging.from === 'grid') {
     saveState();
     grid[dragging.fr][dragging.fc] = null;
     if (!anden.includes(dragging.piece.id)) anden.push(dragging.piece.id);
   }
-  document.querySelectorAll('.cell.valid-target').forEach(cell => cell.classList.remove('valid-target'));
-  dragging = null; renderAll(); updateUndoButtons(); saveGame();
+  document.querySelectorAll('.cell.valid-target, .cell.valid-hover').forEach(cell => {
+    cell.classList.remove('valid-target', 'valid-hover');
+  });
+  dragging = null;
+  renderAll(); updateUndoButtons(); saveGame();
+}
+
+// ── mouse ──
+function onMouseMove(e) { _moveDrag(e.clientX, e.clientY); }
+function onMouseUp(e)   { _endDrag(e.clientX, e.clientY); }
+
+// ── touch ──
+function onTouchMove(e) {
+  if (!dragging) return;
+  e.preventDefault(); // evita scroll solo durante drag
+  const {x,y} = getCoords(e);
+  _moveDrag(x, y);
+}
+function onTouchEnd(e) {
+  const {x,y} = getCoords(e);
+  _endDrag(x, y);
+}
+
+// ── inicio drag: expuesto para los listeners de piezas ──
+function dragStart(e, piece, from, fr, fc) {
+  e.preventDefault();
+  const {x,y} = getCoords(e);
+  _startDrag(piece, from, fr, fc, x, y);
 }
 
 function renderGrid() {
@@ -607,7 +642,8 @@ function renderGrid() {
       const wrap=document.createElement('div'); wrap.className='piece-wrap';
       if (dragging?.piece.id===p.id) wrap.classList.add('dragging');
       wrap.innerHTML=shapeSVG(p.shape,p.color,56);
-      wrap.addEventListener('pointerdown', e=>dragStart(e,p,'grid',r,c));
+      wrap.addEventListener('mousedown',  e=>dragStart(e,p,'grid',r,c));
+      wrap.addEventListener('touchstart', e=>dragStart(e,p,'grid',r,c), {passive:false});
       const ind=document.createElement('span'); ind.className='cell-indicator'; ind.style.color=v?'#52B052':'#E05252'; ind.textContent=v?'✓':'✗';
       cell.appendChild(wrap); cell.appendChild(ind);
     }
@@ -625,7 +661,8 @@ function renderAnden() {
     const div=document.createElement('div'); div.className='anden-tile';
     if (dragging?.piece.id===id) div.classList.add('dragging');
     div.innerHTML=shapeSVG(p.shape,p.color,36);
-    div.addEventListener('pointerdown', e=>dragStart(e,p,'anden'));
+    div.addEventListener('mousedown',  e=>dragStart(e,p,'anden'));
+    div.addEventListener('touchstart', e=>dragStart(e,p,'anden'), {passive:false});
     el.appendChild(div);
   });
 }
@@ -754,9 +791,11 @@ window.onload = () => {
   const mdisp = document.getElementById('moves-display'); if(mdisp) mdisp.textContent='· '+moveCount+' mov';
   document.getElementById('subtitle').textContent = `#${Math.floor(Date.now()/86400000)} · ${new Date().toLocaleDateString()}`;
   SHAPES.forEach(s => { const el=document.getElementById('ri-'+s); if(el) el.innerHTML=shapeSVG(s,'white',18); });
-  document.addEventListener('pointermove', onMove);
-  document.addEventListener('pointerup', onUp);
-  document.addEventListener('pointercancel', onUp);
+  document.addEventListener('mousemove',   onMouseMove);
+  document.addEventListener('mouseup',     onMouseUp);
+  document.addEventListener('touchmove',   onTouchMove, {passive:false});
+  document.addEventListener('touchend',    onTouchEnd);
+  document.addEventListener('touchcancel', onTouchEnd);
   updateUndoButtons();
   renderAll();
 };
