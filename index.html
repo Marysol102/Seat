@@ -681,7 +681,16 @@ function hideVictory() { document.getElementById('victory').classList.add('hidde
 function share() {
   const num = Math.floor(Date.now()/86400000);
   const fecha = new Date().toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'});
-  const text = `FORMAS #${num} · ${fecha}\n⏱ ${formatTime(elapsedSeconds)} · 🔢 ${moveCount} movimientos`;
+  // Emoji por forma+color
+  const PIECE_EMOJI = {
+    'circle-red':'🔴','circle-blue':'🔵','circle-green':'🟢','circle-yellow':'🟡','circle-white':'⚪',
+    'square-red':'🟥','square-blue':'🟦','square-green':'🟩','square-yellow':'🟨','square-white':'⬜',
+    'triangle-red':'🔺','triangle-blue':'🔹','triangle-green':'🔸','triangle-yellow':'🔸','triangle-white':'🔷',
+    'diamond-red':'🔶','diamond-blue':'🔷','diamond-green':'💠','diamond-yellow':'🔶','diamond-white':'💠',
+    'x-red':'❌','x-blue':'✖️','x-green':'✖️','x-yellow':'✖️','x-white':'✖️',
+  };
+  const shapesLine = puzzle.pieces.map(p => PIECE_EMOJI[p.shape+'-'+p.color] || '▪️').join(' ');
+  const text = `FORMAS #${num} · ${fecha}\n${shapesLine}\n⏱ ${formatTime(elapsedSeconds)} · 🔢 ${moveCount} movimientos\nhttps://bit.ly/⛧shλρєs⛧`;
   navigator.clipboard.writeText(text).then(() => {
     const btn = document.getElementById('btn-copy');
     if(btn){ const orig = btn.textContent; btn.textContent = '✓ Copiado'; setTimeout(()=>{ btn.textContent = orig; }, 2000); }
