@@ -106,13 +106,22 @@ function startChallenge() {
 
   initPuzzle(seed, 'reto');
 
-  // Copiar link al portapapeles
+  // Copiar link al portapapeles y mostrar toast
   navigator.clipboard.writeText(url.toString()).then(() => {
     const btn = document.getElementById('btn-challenge');
     if (btn) {
       const orig = btn.innerHTML;
       btn.innerHTML = '✓ Link copiado';
       setTimeout(() => { btn.innerHTML = orig; }, 2500);
+    }
+    // Toast
+    const toast = document.getElementById('challenge-toast');
+    if (toast) {
+      toast.classList.remove('hidden', 'hiding');
+      setTimeout(() => {
+        toast.classList.add('hiding');
+        setTimeout(() => toast.classList.add('hidden'), 300);
+      }, 1000);
     }
   });
 }
