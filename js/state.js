@@ -9,13 +9,35 @@ let elapsedSeconds = 0;
 let timerStart = null;
 let timerInterval = null;
 
-// ── Persistencia ─────────────────────────────────────────────
+// ── Modo de juego ─────────────────────────────────────────────
+// 'daily'   → puzzle del día, con guardado
+// 'history' → puzzle de otro día, sin guardado
+// 'reto'    → seed aleatoria compartida, sin guardado
+let gameMode = 'daily';
+let gameSeed = null;      // seed activa
+let dateOffset = 0;       // 0 = hoy, -1 = ayer, etc.
+
+function seedForOffset(offset) {
+  const d = new Date();
+  d.setDate(d.getDate() + offset);
+  return d.getFullYear()*10000 + (d.getMonth()+1)*100 + d.getDate();
+}
+
+function dateForOffset(offset) {
+  const d = new Date();
+  d.setDate(d.getDate() + offset);
+  return d;
+}
+
+// ── Persistencia (solo daily) ─────────────────────────────────
 function saveGame() {
+  if (gameMode !== 'daily') return;
   const data = { grid, anden, moveCount, elapsedSeconds, won, date: new Date().toDateString() };
   localStorage.setItem('formas_save', JSON.stringify(data));
 }
 
 function loadGame() {
+  if (gameMode !== 'daily') return null;
   const saved = localStorage.getItem('formas_save');
   if (!saved) return null;
   const data = JSON.parse(saved);
@@ -44,7 +66,7 @@ function stopTimer() {
   timerInterval = null;
 }
 
-// ── Historial ─────────────────────────────────────────────────
+// ── Historial de movimientos ──────────────────────────────────
 function saveState() {
   moveCount++;
   const md = document.getElementById('moves-display');
