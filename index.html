@@ -14,7 +14,14 @@
   <div id="game">
     <div class="titulo-wrap">
       <div class="pauta-lines"><h1>Formas</h1></div>
-      <div class="subtitle" id="subtitle">#… · cargando…</div>
+      <div class="subtitle-row">
+        <button class="btn-nav" id="btn-prev-day" onclick="goDay(-1)" title="Puzzle anterior">‹</button>
+        <div class="subtitle-center">
+          <div class="subtitle" id="subtitle">#… · cargando…</div>
+          <span class="mode-badge" id="mode-badge" style="display:none"></span>
+        </div>
+        <button class="btn-nav" id="btn-next-day" onclick="goDay(1)" title="Puzzle siguiente">›</button>
+      </div>
     </div>
     <div class="progress-wrap">
       <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
@@ -33,6 +40,7 @@
       <div id="anden"></div>
     </div>
     <div class="game-btns">
+      <button class="btn-challenge" id="btn-challenge" onclick="startChallenge()">🎯 Retar</button>
       <button class="btn-main hidden" id="btn-share" onclick="share()">📋 Compartir</button>
     </div>
   </div>
@@ -95,6 +103,11 @@
         <div><div class="victory-stat-val" id="v-moves">0</div><div class="victory-stat-lbl">MOVIMIENTOS</div></div>
       </div>
       <div class="victory-divh"></div>
+      <div id="v-countdown-wrap" class="victory-countdown-wrap">
+        <div class="victory-countdown-lbl">PRÓXIMO PUZZLE EN</div>
+        <div class="victory-countdown" id="v-countdown">…</div>
+        <div class="victory-divh" style="margin-top:14px"></div>
+      </div>
       <div class="victory-link">◆ is.gd/Shapes</div>
       <button class="btn-copy" id="btn-copy" onclick="share()">📋 Copiar resultado</button>
       <button class="btn-back" onclick="hideVictory()">Ver cuadrícula</button>
