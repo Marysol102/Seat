@@ -43,12 +43,7 @@ function renderGrid() {
       wrap.className = 'piece-wrap';
       if (dragging?.piece.id === p.id) wrap.classList.add('dragging');
       wrap.innerHTML = shapeSVG(p.shape, p.color, 56);
-      wrap.addEventListener('mousedown', e => dragStart(e, p, 'grid', r, c));
-      wrap.addEventListener('touchstart', e => {
-        e.preventDefault();
-        const t = e.touches[0];
-        startDragging(p, 'grid', r, c, t.clientX, t.clientY);
-      }, {passive: false});
+      attachDrag(wrap, p, 'grid', r, c);
       const ind = document.createElement('span');
       ind.className = 'cell-indicator';
       ind.style.color = v ? '#52B052' : '#E05252';
@@ -75,12 +70,7 @@ function renderAnden() {
     div.className = 'anden-tile';
     if (dragging?.piece.id === id) div.classList.add('dragging');
     div.innerHTML = shapeSVG(p.shape, p.color, 36);
-    div.addEventListener('mousedown', e => dragStart(e, p, 'anden'));
-    div.addEventListener('touchstart', e => {
-      e.preventDefault();
-      const t = e.touches[0];
-      startDragging(p, 'anden', null, null, t.clientX, t.clientY);
-    }, {passive: false});
+    attachDrag(div, p, 'anden', null, null);
     el.appendChild(div);
   });
 }

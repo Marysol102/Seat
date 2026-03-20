@@ -1,100 +1,114 @@
-// ── Drag & Drop (ratón + touch) ───────────────────────────────
+// ── Drag & Drop con Pointer Events ───────────────────────────
+// Una sola API para ratón y touch. Sin conflictos, sin doble tap.
 // Depende de: config.js, logic.js, state.js, render.js
 
 let dragging = null;
 const ghostEl = document.getElementById('ghost');
 
-// ── Lógica compartida ─────────────────────────────────────────
-function startDragging(piece, from, fr, fc, x, y) {
-  dragging = {piece, from, fr, fc};
-  ghostEl.innerHTML = shapeSVG(piece.shape, piece.color, 68);
-  ghostEl.style.left    = x + 'px';
-  ghostEl.style.top     = y + 'px';
+// En touch el ghost sube sobre el dedo para que se vea el destino
+const TOUCH_LIFT = 55;
+
+// ── API pública: render.js llama esto en cada pieza ───────────
+function attachDrag(el, piece, from, fr, fc) {
+  el.addEventListener('pointerdown', e => {
+    if (e.button > 0) return; // solo botón principal del ratón
+    e.preventDefault();
+    _startDrag(piece, from, fr, fc, e.clientX, e.clientY, e.pointerType !== 'mouse');
+  });
+}
+
+// ── Inicio ────────────────────────────────────────────────────
+function _startDrag(piece, from, fr, fc, x, y, isTouch) {
+  dragging = { piece, from, fr, fc, isTouch };
+  ghostEl.innerHTML = shapeSVG(piece.shape, piece.color, 64);
+  _moveGhost(x, y);
   ghostEl.style.display = 'block';
   renderAll();
+  // Marcar celdas donde es válida la forma
   document.querySelectorAll('.cell[data-r]').forEach(cell => {
-    const r = +cell.dataset.r, col = +cell.dataset.c;
-    if (!puzzle.blocks.some(b=>b[0]===r&&b[1]===col) && isValidPos(piece.shape, r, col))
+    const r = +cell.dataset.r, c = +cell.dataset.c;
+    if (!puzzle.blocks.some(b => b[0]===r && b[1]===c) && isValidPos(piece.shape, r, c))
       cell.classList.add('valid-target');
   });
 }
 
-function moveDragging(x, y) {
-  ghostEl.style.left = x + 'px';
-  ghostEl.style.top  = y + 'px';
+// ── Movimiento ────────────────────────────────────────────────
+document.addEventListener('pointermove', e => {
+  if (!dragging) return;
+  e.preventDefault();
+  _moveGhost(e.clientX, e.clientY);
+  // Actualizar celda resaltada
   document.querySelectorAll('.cell.valid-hover').forEach(el => el.classList.remove('valid-hover'));
-  ghostEl.style.display = 'none';
-  const under = document.elementFromPoint(x, y);
-  ghostEl.style.display = 'block';
-  const cell = under?.closest?.('.cell[data-r]');
-  if (cell && cell.classList.contains('valid-target')) cell.classList.add('valid-hover');
+  const cell = _cellAt(e.clientX, e.clientY);
+  if (cell?.classList.contains('valid-target')) cell.classList.add('valid-hover');
+}, { passive: false });
+
+// ── Soltar ────────────────────────────────────────────────────
+document.addEventListener('pointerup', e => {
+  if (!dragging) return;
+  _drop(e.clientX, e.clientY);
+});
+
+// ── Cancelar (llamada del sistema, ej. notificación) ──────────
+document.addEventListener('pointercancel', () => {
+  if (!dragging) return;
+  _cancel();
+});
+
+// ── Helpers internos ──────────────────────────────────────────
+function _moveGhost(x, y) {
+  ghostEl.style.left = x + 'px';
+  ghostEl.style.top  = (dragging.isTouch ? y - TOUCH_LIFT : y) + 'px';
 }
 
-function endDragging(x, y) {
+// Oculta el ghost momentáneamente para que elementFromPoint lo ignore
+function _cellAt(x, y) {
+  ghostEl.style.visibility = 'hidden';
+  const el = document.elementFromPoint(x, y);
+  ghostEl.style.visibility = 'visible';
+  return el?.closest?.('.cell[data-r]');
+}
+
+function _drop(x, y) {
   ghostEl.style.display = 'none';
   document.querySelectorAll('.cell.valid-hover').forEach(el => el.classList.remove('valid-hover'));
-  const under     = document.elementFromPoint(x, y);
-  const cellEl    = under?.closest?.('.cell[data-r]');
-  const andenZone = under?.closest?.('#anden');
 
-  if (cellEl && cellEl.classList.contains('valid-target')) {
+  ghostEl.style.visibility = 'hidden';
+  const under   = document.elementFromPoint(x, y);
+  ghostEl.style.visibility = 'visible';
+  const cellEl  = under?.closest?.('.cell[data-r]');
+  const andenEl = under?.closest?.('#anden');
+
+  if (cellEl?.classList.contains('valid-target')) {
+    // Soltar sobre celda válida
     const r = +cellEl.dataset.r, col = +cellEl.dataset.c;
     saveState();
     const existing = grid[r][col];
-    if (dragging.from === 'grid') grid[dragging.fr][dragging.fc] = existing;
-    else { anden = anden.filter(id => id !== dragging.piece.id); if (existing) anden.push(existing.id); }
+    if (dragging.from === 'grid') {
+      grid[dragging.fr][dragging.fc] = existing; // intercambio
+    } else {
+      anden = anden.filter(id => id !== dragging.piece.id);
+      if (existing) anden.push(existing.id);
+    }
     grid[r][col] = dragging.piece;
-  } else if (andenZone && dragging.from === 'grid') {
+
+  } else if (andenEl && dragging.from === 'grid') {
+    // Devolver al andén desde el tablero
     saveState();
     grid[dragging.fr][dragging.fc] = null;
     if (!anden.includes(dragging.piece.id)) anden.push(dragging.piece.id);
   }
+  // Si se suelta en vacío → la pieza vuelve sola (no se hace nada)
 
   document.querySelectorAll('.cell.valid-target').forEach(el => el.classList.remove('valid-target'));
   dragging = null;
   renderAll(); updateUndoButtons(); saveGame();
 }
 
-// ── Manejadores de ratón ──────────────────────────────────────
-function dragStart(e, piece, from, fr, fc) {
-  if (e.type === 'mousedown') {
-    e.preventDefault();
-    startDragging(piece, from, fr, fc, e.clientX, e.clientY);
-  }
-}
-
-function onMove(e) {
-  if (!dragging || e.type !== 'mousemove') return;
-  moveDragging(e.clientX, e.clientY);
-}
-
-function onUp(e) {
-  if (!dragging || e.type !== 'mouseup') return;
-  endDragging(e.clientX, e.clientY);
-}
-
-document.addEventListener('mousemove', onMove);
-document.addEventListener('mouseup', onUp);
-
-// ── Manejadores de touch ──────────────────────────────────────
-document.addEventListener('touchmove', e => {
-  if (!dragging) return;
-  e.preventDefault();
-  const t = e.touches[0];
-  moveDragging(t.clientX, t.clientY);
-}, {passive: false});
-
-document.addEventListener('touchend', e => {
-  if (!dragging) return;
-  const t = e.changedTouches[0];
-  endDragging(t.clientX, t.clientY);
-});
-
-document.addEventListener('touchcancel', e => {
-  if (!dragging) return;
+function _cancel() {
   ghostEl.style.display = 'none';
-  document.querySelectorAll('.cell.valid-target,.cell.valid-hover')
-    .forEach(el => el.classList.remove('valid-target','valid-hover'));
+  document.querySelectorAll('.cell.valid-target, .cell.valid-hover')
+    .forEach(el => el.classList.remove('valid-target', 'valid-hover'));
   dragging = null;
   renderAll();
-});
+}
