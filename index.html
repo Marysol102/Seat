@@ -15,12 +15,12 @@
     <div class="titulo-wrap">
       <div class="pauta-lines"><h1>Formas</h1></div>
       <div class="subtitle-row">
-        <button class="btn-nav" id="btn-prev-day" onclick="goDay(-1)" title="Puzzle anterior">‹</button>
+        <button class="btn-nav" id="btn-prev-day" onclick="goDay(-1)">‹ <span class="btn-nav-label">Anterior</span></button>
         <div class="subtitle-center">
           <div class="subtitle" id="subtitle">#… · cargando…</div>
           <span class="mode-badge" id="mode-badge" style="display:none"></span>
         </div>
-        <button class="btn-nav" id="btn-next-day" onclick="goDay(1)" title="Puzzle siguiente">›</button>
+        <button class="btn-nav" id="btn-next-day" onclick="goDay(1)"><span class="btn-nav-label">Siguiente</span> ›</button>
       </div>
     </div>
     <div class="progress-wrap">
@@ -189,6 +189,11 @@
       </div>
     </div>
   </div>
+</div>
+
+<!-- Toast de reto -->
+<div id="challenge-toast" class="challenge-toast hidden">
+  🎯 ¡Link copiado! Ya puedes compartirlo
 </div>
 
 <!-- ── Scripts (orden de carga importa) ── -->
