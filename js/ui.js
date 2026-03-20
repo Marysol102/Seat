@@ -30,7 +30,8 @@ function showVictory() {
   stopTimer();
   const num   = Math.floor(Date.now() / 86400000);
   const fecha = new Date().toLocaleDateString('es-ES', {day:'numeric', month:'long', year:'numeric'});
-  document.getElementById('v-sub').textContent   = `FORMAS #${num} · ${fecha}`;
+  document.getElementById('v-num').textContent   = 'FORMAS #' + num;
+  document.getElementById('v-date').textContent  = fecha;
   document.getElementById('v-time').textContent  = formatTime(elapsedSeconds);
   document.getElementById('v-moves').textContent = moveCount;
   document.getElementById('victory').classList.remove('hidden');
@@ -44,7 +45,10 @@ function hideVictory() {
 function share() {
   const num   = Math.floor(Date.now() / 86400000);
   const fecha = new Date().toLocaleDateString('es-ES', {day:'numeric', month:'long', year:'numeric'});
-  const text  = `FORMAS #${num} · ${fecha}\n⏱ ${formatTime(elapsedSeconds)} · 🔢 ${moveCount} movimientos`;
+  const text  = '🔷 FORMAS #' + num + ' · ' + fecha + '\n'
+              + '⏱ ' + formatTime(elapsedSeconds) + '  ·  🔢 ' + moveCount + ' movimientos\n'
+              + '● ■ ▲ ✕ ◆\n'
+              + '▸ is.gd/Shapes';
   navigator.clipboard.writeText(text).then(() => {
     const btn = document.getElementById('btn-copy');
     if (btn) {
