@@ -69,26 +69,36 @@
 <!-- Ghost para drag & drop -->
 <div id="ghost"></div>
 
-<!-- Pantalla de victoria -->
+<!-- Pantalla de victoria (diseño A) -->
 <div class="victory-bg hidden" id="victory">
   <div class="victory-box">
-    <div class="victory-star">✨</div>
-    <div class="victory-title">¡LOGRADO!</div>
-    <div class="victory-sub" id="v-sub">FORMAS #…</div>
-    <div class="victory-mode" id="v-mode" style="margin-bottom:18px"></div>
-    <div style="display:flex;justify-content:center;gap:24px;margin-bottom:20px">
-      <div style="text-align:center">
-        <div style="font-size:22px;font-weight:900;color:#1A1A1A" id="v-time">0:00</div>
-        <div style="font-size:10px;color:#BBBBBB;letter-spacing:1px;margin-top:2px">TIEMPO</div>
+    <!-- Formas flotantes de fondo -->
+    <svg class="victory-shapes" viewBox="0 0 310 390" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+      <circle cx="-15" cy="55"  r="58" fill="#E05252" opacity=".06"/>
+      <circle cx="285" cy="130" r="28" fill="#E05252" opacity=".06"/>
+      <polygon points="285,-10 340,75 230,75" fill="#D4AE2C" opacity=".08"/>
+      <rect x="18" y="315" width="58" height="58" rx="7" fill="#4EA84E" opacity=".07"/>
+      <polygon points="280,310 320,370 280,430 240,370" fill="#4D6FD1" opacity=".08"/>
+      <polygon points="42,155 66,192 42,229 18,192" fill="#4D6FD1" opacity=".07"/>
+      <line x1="228" y1="275" x2="272" y2="319" stroke="#D4AE2C" stroke-width="13" stroke-linecap="round" opacity=".08"/>
+      <line x1="272" y1="275" x2="228" y2="319" stroke="#D4AE2C" stroke-width="13" stroke-linecap="round" opacity=".08"/>
+    </svg>
+    <!-- Contenido -->
+    <div class="victory-content">
+      <div class="victory-star">✨</div>
+      <div class="victory-title">Formas</div>
+      <div class="victory-num" id="v-num">FORMAS #…</div>
+      <div class="victory-date" id="v-date">…</div>
+      <div class="victory-stats">
+        <div><div class="victory-stat-val" id="v-time">0:00</div><div class="victory-stat-lbl">TIEMPO</div></div>
+        <div class="victory-divv"></div>
+        <div><div class="victory-stat-val" id="v-moves">0</div><div class="victory-stat-lbl">MOVIMIENTOS</div></div>
       </div>
-      <div style="width:1px;background:#F0F0F0"></div>
-      <div style="text-align:center">
-        <div style="font-size:22px;font-weight:900;color:#1A1A1A" id="v-moves">0</div>
-        <div style="font-size:10px;color:#BBBBBB;letter-spacing:1px;margin-top:2px">MOVIMIENTOS</div>
-      </div>
+      <div class="victory-divh"></div>
+      <div class="victory-link">◆ is.gd/Shapes</div>
+      <button class="btn-copy" id="btn-copy" onclick="share()">📋 Copiar resultado</button>
+      <button class="btn-back" onclick="hideVictory()">Ver cuadrícula</button>
     </div>
-    <button class="btn-copy" id="btn-copy" onclick="share()">📋 Compartir</button>
-    <button class="btn-back" onclick="hideVictory()">Ver cuadrícula</button>
   </div>
 </div>
 
