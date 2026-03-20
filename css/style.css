@@ -292,3 +292,75 @@ button:disabled{opacity:.4;cursor:default;}
   letter-spacing: .5px;
   margin-bottom: 16px;
 }
+
+/* ── Navegación de días ───────────────────────────────────────── */
+.subtitle-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin-top: 3px;
+}
+.subtitle-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+.btn-nav {
+  background: none;
+  border: none;
+  font-size: 22px;
+  color: #B0A890;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+  border-radius: 6px;
+  transition: color .15s, background .15s;
+  min-width: 28px;
+}
+.btn-nav:hover:not(:disabled) { color: #3A3060; background: rgba(58,48,96,.07); }
+.btn-nav:disabled { opacity: .25; cursor: default; }
+
+/* ── Badge de modo ───────────────────────────────────────────── */
+.mode-badge {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  padding: 2px 8px;
+  border-radius: 20px;
+}
+.mode-badge.reto    { background: #FFF0F0; color: #C04040; border: 1.5px solid #F0C0C0; }
+.mode-badge.history { background: #F0F4FF; color: #4060C0; border: 1.5px solid #C0CCEE; }
+
+/* ── Botón Retar ─────────────────────────────────────────────── */
+.btn-challenge {
+  background: #FFFEF5;
+  border: 1.5px solid #C8B890 !important;
+  color: #7A6858;
+  font-family: 'Patrick Hand', cursive;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background .15s;
+  white-space: nowrap;
+}
+.btn-challenge:hover { background: #F5EEE0; }
+
+/* ── Countdown en victoria ───────────────────────────────────── */
+.victory-countdown-wrap { text-align: center; }
+.victory-countdown-lbl {
+  font-size: 9px;
+  color: #CCCCCC;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.victory-countdown {
+  font-size: 20px;
+  font-weight: 900;
+  color: #3A3060;
+  letter-spacing: 2px;
+}
