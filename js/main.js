@@ -21,6 +21,7 @@ function initPuzzle(seed, mode) {
   } else {
     grid  = Array.from({length:N}, () => Array(N).fill(null));
     anden = puzzle.pieces.map(p => p.id);
+    startTimer(); // el reloj corre desde que se carga la página
   }
 
   const tdisp = document.getElementById('timer-display');

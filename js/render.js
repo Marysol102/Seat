@@ -30,7 +30,9 @@ function renderGrid() {
     cell.className = 'cell';
     cell.dataset.r = r;
     cell.dataset.c = c;
-    if (puzzle.blocks.some(b=>b[0]===r && b[1]===c)) {
+    const isBlocked = puzzle.blocks.some(b=>b[0]===r && b[1]===c);
+    if ((r+c)%2 === 0 && !isBlocked) cell.classList.add('chess-dark');
+    if (isBlocked) {
       cell.classList.add('blocked');
       el.appendChild(cell);
       continue;

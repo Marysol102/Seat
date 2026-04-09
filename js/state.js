@@ -32,7 +32,7 @@ function dateForOffset(offset) {
 // ── Persistencia (solo daily) ─────────────────────────────────
 function saveGame() {
   if (gameMode !== 'daily') return;
-  const data = { grid, anden, moveCount, elapsedSeconds, won, date: new Date().toDateString() };
+  const data = { grid, anden, moveCount, elapsedSeconds, won, date: new Date().toDateString(), seed: gameSeed };
   localStorage.setItem('formas_save', JSON.stringify(data));
 }
 
@@ -42,6 +42,7 @@ function loadGame() {
   if (!saved) return null;
   const data = JSON.parse(saved);
   if (data.date !== new Date().toDateString()) return null;
+  if (data.seed !== undefined && data.seed !== gameSeed) return null; // puzzle cambió, ignorar save
   return data;
 }
 

@@ -24,11 +24,11 @@ function _startDrag(piece, from, fr, fc, x, y, isTouch) {
   _moveGhost(x, y);
   ghostEl.style.display = 'block';
   renderAll();
-  // Marcar celdas donde es válida la forma
+  // Sin sugerencias visuales de posición (modo difícil)
   document.querySelectorAll('.cell[data-r]').forEach(cell => {
     const r = +cell.dataset.r, c = +cell.dataset.c;
     if (!puzzle.blocks.some(b => b[0]===r && b[1]===c) && isValidPos(piece.shape, r, c))
-      cell.classList.add('valid-target');
+      cell.classList.add('valid-target'); // clase mantenida para drop logic, sin estilo visible
   });
 }
 
