@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>FORMAS — Puzzle diario</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600;700;900&family=Schoolbell&family=Patrick+Hand&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div id="shell">
+  <div id="game">
+    <div class="titulo-wrap">
+      <div class="pauta-lines"><h1>Formas</h1></div>
+      <div class="subtitle-row">
+        <button class="btn-nav" id="btn-prev-day" onclick="goDay(-1)">‹ <span class="btn-nav-label">Anterior</span></button>
+        <div class="subtitle-center">
+          <div class="subtitle" id="subtitle">#… · cargando…</div>
+          <span class="mode-badge" id="mode-badge" style="display:none"></span>
+        </div>
+        <button class="btn-nav" id="btn-next-day" onclick="goDay(1)"><span class="btn-nav-label">Siguiente</span> ›</button>
+      </div>
+    </div>
+    <div class="progress-wrap">
+      <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+      <div class="progress-label" id="progress-label">0/0 válidas</div>
+      <div class="progress-label" id="timer-display" style="margin-left:8px;color:#BBBBBB;">0:00</div>
+      <div class="progress-label" id="moves-display" style="color:#BBBBBB;">· 0 mov</div>
+      <div style="display:flex;gap:5px;margin-left:auto;">
+        <button class="btn-secondary btn-toggle-rules" id="btn-toggle" onclick="toggleRules()" title="Reglas"><span id="toggle-icon">ℹ️</span></button>
+        <button class="btn-secondary" id="btn-undo" onclick="undo()" title="Deshacer">↩</button>
+        <button class="btn-secondary" id="btn-redo" onclick="redo()" title="Rehacer">↪</button>
+        <button class="btn-secondary" onclick="resetGame()" title="Reiniciar">🗑</button>
+      </div>
+    </div>
+    <div id="grid"></div>
+    <div class="anden-wrap">
+      <div id="anden"></div>
+    </div>
+    <div class="game-btns">
+      <button class="btn-challenge" id="btn-challenge" onclick="startChallenge()">🎯 Retar</button>
+      <button class="btn-main hidden" id="btn-share" onclick="share()">📋 Compartir</button>
+    </div>
+  </div>
+
+  <div id="rules-panel">
+    <div class="rules-title">Reglas</div>
+    <div class="rules-section">Forma → posición</div>
+    <div class="rule-item"><div class="rule-icon-sm" id="ri-circle"></div><div class="rule-text"><div class="rname">Círculo</div><div class="rdesc">Cualquier casilla</div></div></div>
+    <div class="rule-item"><div class="rule-icon-sm" id="ri-square"></div><div class="rule-text"><div class="rname">Cuadrado</div><div class="rdesc">Solo esquinas</div></div></div>
+    <div class="rule-item"><div class="rule-icon-sm" id="ri-triangle"></div><div class="rule-text"><div class="rname">Triángulo</div><div class="rdesc">Borde, no esquinas</div></div></div>
+    <div class="rule-item"><div class="rule-icon-sm" id="ri-x"></div><div class="rule-text"><div class="rname">Cruz</div><div class="rdesc">Interior 2×2</div></div></div>
+    <div class="rule-item"><div class="rule-icon-sm" id="ri-diamond"></div><div class="rule-text"><div class="rname">Rombo</div><div class="rdesc">Casillas sombreadas</div></div></div>
+    <div class="rules-divider"></div>
+    <div class="rules-section">Color → aura</div>
+    <div class="rule-item"><div class="color-dot-sm" style="background:#E05252"></div><div class="rule-text"><div class="rname">Rojo</div><div class="rdesc">Sin vecinos</div></div></div>
+    <div class="rule-item"><div class="color-dot-sm" style="background:#4D6FD1"></div><div class="rule-text"><div class="rname">Azul</div><div class="rdesc">No Verde en fila</div></div></div>
+    <div class="rule-item"><div class="color-dot-sm" style="background:#4EA84E"></div><div class="rule-text"><div class="rname">Verde</div><div class="rdesc">No Azul en columna</div></div></div>
+    <div class="rule-item"><div class="color-dot-sm" style="background:#D4AE2C"></div><div class="rule-text"><div class="rname">Amarillo</div><div class="rdesc">Anula auras vecinas</div></div></div>
+    <div class="rules-divider"></div>
+    <div class="rules-note">■ negro = bloqueado.</div>
+  </div>
+</div>
+
+<!-- Filtro SVG para efecto lápiz -->
+<svg width="0" height="0" style="position:absolute;pointer-events:none">
+  <defs>
+    <filter id="f-lapiz" x="-10%" y="-10%" width="120%" height="120%">
+      <feTurbulence type="turbulence" baseFrequency="0.04 0.06" numOctaves="5" seed="8" result="noise"/>
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="3" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+  </defs>
+</svg>
+
+<!-- Ghost para drag & drop -->
+<div id="ghost"></div>
+
+<!-- Pantalla de victoria (diseño A) -->
+<div class="victory-bg hidden" id="victory">
+  <div class="victory-box">
+    <!-- Formas flotantes de fondo -->
+    <svg class="victory-shapes" viewBox="0 0 310 390" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+      <circle cx="-15" cy="55"  r="58" fill="#E05252" opacity=".06"/>
+      <circle cx="285" cy="130" r="28" fill="#E05252" opacity=".06"/>
+      <polygon points="285,-10 340,75 230,75" fill="#D4AE2C" opacity=".08"/>
+      <rect x="18" y="315" width="58" height="58" rx="7" fill="#4EA84E" opacity=".07"/>
+      <polygon points="280,310 320,370 280,430 240,370" fill="#4D6FD1" opacity=".08"/>
+      <polygon points="42,155 66,192 42,229 18,192" fill="#4D6FD1" opacity=".07"/>
+      <line x1="228" y1="275" x2="272" y2="319" stroke="#D4AE2C" stroke-width="13" stroke-linecap="round" opacity=".08"/>
+      <line x1="272" y1="275" x2="228" y2="319" stroke="#D4AE2C" stroke-width="13" stroke-linecap="round" opacity=".08"/>
+    </svg>
+    <!-- Contenido -->
+    <div class="victory-content">
+      <div class="victory-star">✨</div>
+      <div class="victory-title">Formas</div>
+      <div class="victory-num" id="v-num">FORMAS #…</div>
+      <div class="victory-date" id="v-date">…</div>
+      <div class="victory-stats">
+        <div><div class="victory-stat-val" id="v-time">0:00</div><div class="victory-stat-lbl">TIEMPO</div></div>
+        <div class="victory-divv"></div>
+        <div><div class="victory-stat-val" id="v-moves">0</div><div class="victory-stat-lbl">MOVIMIENTOS</div></div>
+      </div>
+      <div class="victory-divh"></div>
+      <div id="v-countdown-wrap" class="victory-countdown-wrap">
+        <div class="victory-countdown-lbl">PRÓXIMO PUZZLE EN</div>
+        <div class="victory-countdown" id="v-countdown">…</div>
+        <div class="victory-divh" style="margin-top:14px"></div>
+      </div>
+      <div class="victory-link">◆ is.gd/Shapes</div>
+      <button class="btn-copy" id="btn-copy" onclick="share()">📋 Copiar resultado</button>
+      <button class="btn-back" onclick="hideVictory()">Ver cuadrícula</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modo Dios -->
+<div id="god-panel">
+  <div id="god-header">
+    <span>⚡ MODO DIOS</span>
+    <button onclick="document.getElementById('god-panel').classList.remove('god-visible')" style="background:none;border:none;color:#fff;font-size:16px;cursor:pointer;padding:0 4px">✕</button>
+  </div>
+  <div class="god-section">
+    <div class="god-label">SEED DEL PUZZLE</div>
+    <div style="display:flex;gap:6px;margin-top:5px">
+      <input id="god-seed" type="number" placeholder="ej. 20250317" style="flex:1;padding:5px 8px;border-radius:6px;border:1px solid #444;background:#1a1a1a;color:#fff;font-size:12px;font-family:monospace">
+      <button class="god-btn" onclick="godRegenerate()">▶</button>
+    </div>
+    <button class="god-btn god-btn-full" style="margin-top:6px" onclick="godRandomSeed()">🎲 Seed aleatoria</button>
+  </div>
+  <div class="god-section">
+    <div class="god-label">SOLUCIÓN</div>
+    <button class="god-btn god-btn-full" onclick="godShowSolution()">👁 Ver solución (3s)</button>
+    <button class="god-btn god-btn-full" onclick="godPlaceSolution()">✅ Colocar solución</button>
+  </div>
+  <div class="god-section">
+    <div class="god-label">TABLERO</div>
+    <button class="god-btn god-btn-full" onclick="godToggleBlockEdit()">🔲 <span id="god-block-label">Editar bloqueos ON</span></button>
+    <button class="god-btn god-btn-full" onclick="godClearBoard()">🗑 Vaciar tablero</button>
+  </div>
+</div>
+
+<!-- Tutorial -->
+<div id="tutorial-bg" class="hidden">
+  <div id="tutorial-box">
+    <div class="t-slide" id="t-slide-0">
+      <div class="t-icon">🔷</div>
+      <div class="t-title">FORMAS</div>
+      <div class="t-sub">Puzzle diario de lógica</div>
+      <div class="t-body">Coloca todas las fichas en el tablero de forma que cada una esté en una posición <strong>válida</strong>. Cuando todas tengan <strong style="color:#52B052">✓</strong>, habrás ganado.</div>
+    </div>
+    <div class="t-slide hidden" id="t-slide-1">
+      <div class="t-title">Reglas de forma</div>
+      <div class="t-sub">Cada forma tiene su lugar</div>
+      <div class="t-rules">
+        <div class="t-rule"><div class="t-shape-icon" id="ti-circle"></div><div><b>Círculo</b> — libre</div></div>
+        <div class="t-rule"><div class="t-shape-icon" id="ti-square"></div><div><b>Cuadrado</b> — esquinas</div></div>
+        <div class="t-rule"><div class="t-shape-icon" id="ti-triangle"></div><div><b>Triángulo</b> — bordes</div></div>
+        <div class="t-rule"><div class="t-shape-icon" id="ti-x"></div><div><b>Cruz</b> — centro</div></div>
+        <div class="t-rule"><div class="t-shape-icon" id="ti-diamond"></div><div><b>Rombo</b> — casillas sombreadas</div></div>
+      </div>
+    </div>
+    <div class="t-slide hidden" id="t-slide-2">
+      <div class="t-title">Reglas de color</div>
+      <div class="t-sub">Relaciones entre fichas</div>
+      <div class="t-rules">
+        <div class="t-rule"><div class="t-dot" style="background:#E05252"></div><div><b>Rojo</b> — sin vecinos</div></div>
+        <div class="t-rule"><div class="t-dot" style="background:#4D6FD1"></div><div><b>Azul</b> — no verde en fila</div></div>
+        <div class="t-rule"><div class="t-dot" style="background:#4EA84E"></div><div><b>Verde</b> — no azul en col</div></div>
+        <div class="t-rule"><div class="t-dot" style="background:#D4AE2C"></div><div><b>Amarillo</b> — anula vecinos</div></div>
+      </div>
+    </div>
+    <div class="t-slide hidden" id="t-slide-3">
+      <div class="t-icon">🏆</div>
+      <div class="t-title">Cómo ganar</div>
+      <div class="t-body">Arrastra las fichas al tablero. El borde <span style="color:#4D6FD1;font-weight:700">azul punteado</span> te indica dónde es válida la forma. ¡Suerte!</div>
+    </div>
+    <div id="t-nav">
+      <div id="t-dots">
+        <span class="t-dot-nav active" onclick="goSlide(0)"></span>
+        <span class="t-dot-nav" onclick="goSlide(1)"></span>
+        <span class="t-dot-nav" onclick="goSlide(2)"></span>
+        <span class="t-dot-nav" onclick="goSlide(3)"></span>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="t-btn-skip" onclick="closeTutorial()">Saltar</button>
+        <button class="t-btn-next" id="t-btn-next" onclick="nextSlide()">Siguiente</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast de reto -->
+<div id="challenge-toast" class="challenge-toast hidden">
+  🎯 ¡Link copiado! Ya puedes compartirlo
+</div>
+
+<!-- ── Scripts (orden de carga importa) ── -->
+<script src="js/config.js"></script>
+<script src="js/logic.js"></script>
+<script src="js/state.js"></script>
+<script src="js/render.js"></script>
+<script src="js/drag.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/god.js"></script>
+<script src="js/tutorial.js"></script>
+<script src="js/main.js"></script>
+
+</body>
+</html>
