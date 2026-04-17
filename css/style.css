@@ -1,0 +1,409 @@
+/* ── Reset ─────────────────────────────────────────────────── */
+*{box-sizing:border-box;margin:0;padding:0;}
+
+/* ── Layout general ────────────────────────────────────────── */
+body{
+  font-family:'Jost',sans-serif;
+  background:#F4EFE0;
+  background-image:
+    linear-gradient(rgba(80,80,160,.09) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(80,80,160,.09) 1px, transparent 1px);
+  background-size:22px 22px;
+  min-height:100vh;
+  display:flex;align-items:flex-start;justify-content:center;
+  padding:16px 12px 24px;
+  user-select:none;-webkit-user-select:none;
+  overflow-x:hidden;
+}
+#shell{
+  display:flex;flex-direction:row;align-items:flex-start;justify-content:center;
+  gap:0;width:100%;max-width:700px;position:relative;
+}
+#game{
+  display:flex;flex-direction:column;align-items:center;
+  flex:0 0 auto;width:310px;position:relative;z-index:2;
+  transition:transform 0.3s ease;
+}
+
+/* ── Animaciones victoria y error ──────────────────────────── */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25%       { transform: translateX(-2px); }
+  75%       { transform: translateX(2px); }
+}
+.invalid-state { animation: shake 0.3s ease-in-out; }
+
+.victory-sweep { animation: victory-bounce 0.8s ease-in-out; }
+.victory-sweep::before {
+  content: "";
+  position: absolute;
+  top: 0; left: -40px; right: -40px; bottom: 0;
+  background: linear-gradient(to bottom, transparent, rgba(126,200,104,.4), transparent);
+  z-index: 100;
+  pointer-events: none;
+  border-radius: 15px;
+  animation: sweep-down 2.0s ease-in-out forwards;
+}
+@keyframes victory-bounce {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.03); }
+  100% { transform: scale(1); }
+}
+@keyframes sweep-down {
+  0%   { transform: translateY(-100%); opacity: 0; }
+  20%  { opacity: 1; }
+  80%  { opacity: 1; }
+  100% { transform: translateY(250%); opacity: 0; }
+}
+
+/* ── Confeti ────────────────────────────────────────────────── */
+.confetti {
+  position: absolute; width: 8px; height: 8px; border-radius: 2px;
+  top: -10px; z-index: 300; animation: fall linear forwards;
+}
+@keyframes fall {
+  to { transform: translateY(100vh) rotate(360deg); opacity: 0; }
+}
+
+/* ── Título ─────────────────────────────────────────────────── */
+.titulo-wrap{position:relative;width:100%;margin-bottom:8px;}
+.pauta-lines{
+  position:relative;height:68px;
+  background:
+    linear-gradient(transparent calc(100% - 2px), #9090C8 calc(100% - 2px), #9090C8 100%),
+    linear-gradient(transparent calc(30% - 1px),  #C8C8E8 calc(30% - 1px),  #C8C8E8 calc(30%)),
+    linear-gradient(transparent calc(65% - 1px),  #C8C8E8 calc(65% - 1px),  #C8C8E8 calc(65% + 1px));
+  display:flex;align-items:flex-end;justify-content:center;
+  padding-bottom:5px;
+}
+h1{
+  font-family:'Schoolbell',cursive;font-size:46px;font-weight:400;color:#1A3A60;
+  letter-spacing:8px;line-height:0.85;text-align:center;
+  text-shadow:0.5px 1.5px 0 rgba(26,58,96,.15),2px 0 0 rgba(26,58,96,.05);
+}
+.subtitle{font-family:'Patrick Hand',cursive;font-size:11px;color:#9A8878;font-weight:400;text-align:center;letter-spacing:1.5px;margin-top:3px;}
+.badge-row{display:flex;gap:5px;align-items:center;margin-bottom:6px;flex-wrap:wrap;justify-content:center;}
+.badge{font-size:10px;font-weight:600;padding:2px 9px;border-radius:20px;letter-spacing:.4px;}
+.badge.unique{background:#FFF8EC;color:#B07A20;border:1.5px solid #F0D898;}
+.badge.config{background:#F3F0FF;color:#7060C0;border:1.5px solid #D0C8F8;}
+
+/* ── Barra de progreso ──────────────────────────────────────── */
+.progress-wrap{display:flex;align-items:center;gap:9px;margin-bottom:8px;width:386px;}
+.progress-bar{width:80px;height:4px;background:#E0E0E0;border-radius:3px;overflow:hidden;flex-shrink:0;}
+.progress-fill{height:100%;background:linear-gradient(90deg,#5A9050,#7EC868);border-radius:3px;transition:width .3s,background .3s;}
+.progress-label{font-size:11px;color:#999;font-weight:500;}
+
+/* ── Tablero ─────────────────────────────────────────────────── */
+#grid{
+  display:grid;grid-template-columns:repeat(5,72px);gap:5px;
+  background:#E0D8C0;padding:3px;border-radius:10px;
+  margin-bottom:10px;box-shadow:0 2px 12px rgba(0,0,0,.08);
+}
+.cell{
+  width:72px;height:72px;background:#FFFEF5;border-radius:8px;border:1.5px solid #D0C8A8;
+  display:flex;align-items:center;justify-content:center;position:relative;
+  transition:background .1s,border-color .1s,box-shadow .1s;
+}
+.cell.blocked{
+  background:#3A3060;border-color:#2A2050;cursor:not-allowed;
+  background-image:repeating-linear-gradient(45deg,#302850 0,#302850 3px,#3A3060 3px,#3A3060 7px);
+}
+.cell.valid-target{ /* hints desactivados */ }
+.cell.valid-hover{background:#D8EAF0;border-color:#5080A8;box-shadow:inset 0 0 0 2px rgba(80,128,168,.3);}
+.cell.valid-state{background:#EDF5E5;border-color:#7AB870;border-width:2px;}
+.cell.invalid-state{background:#F8EAEA;border-color:#D07070;border-width:2px;}
+.piece-wrap{width:100%;height:100%;display:flex;align-items:center;justify-content:center;cursor:grab;touch-action:none;}
+.piece-wrap.dragging{opacity:.12;}
+.cell-indicator{position:absolute;bottom:2px;right:3px;font-size:10px;font-weight:700;line-height:1;pointer-events:none;}
+
+/* ── Andén (fichas disponibles) ─────────────────────────────── */
+.anden-wrap{width:386px;margin-bottom:8px;}
+.section-label{font-size:9px;font-weight:700;color:#BBBBBB;letter-spacing:2.5px;text-transform:uppercase;text-align:center;margin-bottom:7px;}
+#anden{
+  display:grid;
+  grid-template-columns:repeat(var(--anden-cols,6), 1fr);
+  gap:4px;padding:4px;
+  background:#FFFEF5;border-radius:10px;border:2px dashed #C8B890;
+  width:386px;touch-action:none;
+  transition:border-color .15s,background .15s;
+}
+.anden-tile{
+  height:60px;display:flex;align-items:center;justify-content:center;
+  background:#FFFEF5;border:1.5px solid #D0C8A8;border-radius:8px;cursor:grab;
+  touch-action:none;transition:transform .1s,box-shadow .1s;
+}
+.anden-tile:hover{box-shadow:0 2px 8px rgba(0,0,0,.1);}
+.anden-tile.dragging{opacity:.12;}
+.anden-empty{color:#CCC;font-size:11px;font-style:italic;align-self:center;}
+
+/* ── Botones ─────────────────────────────────────────────────── */
+.game-btns{display:flex;gap:6px;justify-content:center;width:100%;margin-top:2px;}
+button{
+  padding:8px 12px;border-radius:8px;
+  font-family:'Jost',sans-serif;font-size:12px;font-weight:600;
+  cursor:pointer;letter-spacing:.4px;border:none;
+  transition:background .15s,transform .1s,opacity .15s;
+}
+button:disabled{opacity:.4;cursor:default;}
+.btn-main{background:#3A3060;color:#FFF;flex:1;font-family:'Patrick Hand',cursive;}
+.btn-main:hover{background:#2A2050;}
+.btn-secondary{background:#FFFEF5;border:1.5px solid #C8B890 !important;color:#7A6858;font-family:'Patrick Hand',cursive;display:flex;align-items:center;justify-content:center;min-width:40px;}
+.btn-secondary:hover{background:#F5EEE0;border-color:#B8A878 !important;}
+.btn-toggle-rules.open{background:#3A3060;color:#FFF;border-color:#3A3060 !important;}
+
+/* ── Panel de reglas ────────────────────────────────────────── */
+#rules-panel{
+  position:absolute;left:calc(82%);top:0;width:190px;
+  background:#FFFEF5;border-radius:14px;border:1.5px solid #D0C8A8;
+  padding:14px 12px;box-shadow:0 2px 12px rgba(0,0,0,.07);
+  opacity:0;pointer-events:none;transform:translateX(-8px);
+  transition:opacity .22s ease,transform .22s ease;z-index:50;
+}
+#rules-panel.visible{opacity:1;pointer-events:auto;transform:translateX(0);}
+.rules-title{font-size:10px;font-weight:900;color:#1A1A1A;letter-spacing:3px;text-transform:uppercase;margin-bottom:12px;}
+.rules-section{font-size:9px;font-weight:700;color:#CCCCCC;letter-spacing:2px;text-transform:uppercase;margin-bottom:7px;margin-top:11px;}
+.rules-section:first-of-type{margin-top:0;}
+.rule-item{display:flex;align-items:flex-start;gap:7px;margin-bottom:6px;}
+.rule-icon-sm{width:22px;height:22px;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
+.color-dot-sm{width:10px;height:10px;border-radius:50%;border:1.5px solid #2A2A2A;flex-shrink:0;margin-top:3px;margin-left:6px;}
+.rule-text .rname{font-size:10px;font-weight:700;color:#333;line-height:1.2;}
+.rule-text .rdesc{font-size:9px;color:#AAA;line-height:1.3;margin-top:1px;}
+.rules-divider{height:1px;background:#F4F4F4;margin:9px 0;}
+.rules-note{font-size:9px;color:#CCCCCC;line-height:1.5;margin-top:8px;}
+
+/* ── Ghost (pieza arrastrando) ──────────────────────────────── */
+#ghost{position:fixed;pointer-events:none;z-index:9999;display:none;transform:translate(-50%,-50%);filter:drop-shadow(0 8px 20px rgba(0,0,0,.28));}
+
+/* ── Pantalla de victoria ───────────────────────────────────── */
+.victory-bg{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:200;}
+.victory-box{background:#FFFEF5;border:1.5px solid #D0C8A8;border-radius:20px;padding:28px 24px;text-align:center;max-width:300px;width:100%;margin:16px;box-shadow:0 24px 70px rgba(0,0,0,.3);animation:popIn .4s cubic-bezier(.34,1.56,.64,1);}
+@keyframes popIn{from{transform:scale(.7);opacity:0}to{transform:scale(1);opacity:1}}
+.victory-star{font-size:44px;margin-bottom:8px;}
+.victory-title{font-size:22px;font-weight:900;color:#1A1A1A;letter-spacing:3px;margin-bottom:3px;}
+.victory-sub{font-size:12px;color:#AAAAAA;margin-bottom:3px;letter-spacing:1px;}
+.victory-mode{font-size:10px;color:#CCCCCC;margin-bottom:18px;}
+.btn-copy{width:100%;padding:12px;background:#3A3060;color:#FFF;border-radius:10px;font-size:14px;font-weight:700;font-family:'Jost',sans-serif;cursor:pointer;margin-bottom:8px;}
+.btn-back{width:100%;padding:9px;background:transparent;border:2px solid #EEE !important;color:#AAAAAA;border-radius:10px;font-size:12px;font-family:'Jost',sans-serif;cursor:pointer;}
+
+/* ── Modo Dios ───────────────────────────────────────────────── */
+#god-panel{display:none;position:fixed;top:20px;right:20px;width:230px;background:#111;color:#eee;border-radius:12px;border:1px solid #333;box-shadow:0 8px 32px rgba(0,0,0,.6);z-index:99999;font-family:'Jost',sans-serif;overflow:hidden;}
+#god-panel.god-visible{display:block;}
+#god-header{background:#1a1a2e;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:800;letter-spacing:2px;color:#7eb8f7;}
+.god-section{padding:10px 12px;border-top:1px solid #222;}
+.god-label{font-size:9px;font-weight:700;letter-spacing:2px;color:#555;text-transform:uppercase;}
+.god-btn{background:#1e3a5f;color:#7eb8f7;border:none;border-radius:6px;padding:5px 10px;font-size:11px;font-weight:600;cursor:pointer;font-family:'Jost',sans-serif;margin-top:5px;transition:background .15s;}
+.god-btn:hover{background:#2a5090;}
+.god-btn-full{width:100%;text-align:left;}
+
+/* ── Tutorial ────────────────────────────────────────────────── */
+#tutorial-bg{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:10000;padding:16px;}
+#tutorial-box{background:#FFF;border-radius:20px;padding:28px 24px;max-width:340px;width:100%;box-shadow:0 24px 70px rgba(0,0,0,.3);font-family:'Jost',sans-serif;}
+.t-slide{min-height:240px;display:flex;flex-direction:column;}
+.t-icon{font-size:40px;text-align:center;margin-bottom:10px;}
+.t-title{font-size:20px;font-weight:900;color:#1A1A1A;letter-spacing:2px;text-align:center;margin-bottom:4px;}
+.t-sub{font-size:11px;color:#AAAAAA;text-align:center;margin-bottom:10px;}
+.t-body{font-size:13px;color:#555;line-height:1.7;}
+.t-rules{display:flex;flex-direction:column;gap:9px;}
+.t-rule{display:flex;align-items:center;gap:10px;font-size:12px;}
+.t-shape-icon{width:28px;height:28px;display:flex;align-items:center;justify-content:center;}
+.t-dot{width:14px;height:14px;border-radius:50%;border:2px solid #2A2A2A;}
+#t-nav{display:flex;align-items:center;justify-content:space-between;margin-top:22px;}
+#t-dots{display:flex;gap:6px;}
+.t-dot-nav{width:7px;height:7px;border-radius:50%;background:#E0E0E0;cursor:pointer;}
+.t-dot-nav.active{background:#1A1A1A;}
+.t-btn-skip{background:none;border:none;font-size:12px;color:#BBB;cursor:pointer;}
+.t-btn-next{background:#1A1A1A;color:#FFF;border:none;border-radius:8px;font-size:12px;font-weight:700;padding:8px 16px;cursor:pointer;}
+
+/* ── Responsive ──────────────────────────────────────────────── */
+@media(max-width:540px){
+  #shell{flex-direction:column;align-items:center;}
+  #game{width:100%;max-width:386px;}
+  #rules-panel{position:relative;left:auto;top:auto;width:100%;max-width:386px;margin-left:0;margin-top:10px;transform:translateY(-6px);}
+  #rules-panel.visible{transform:translateY(0);}
+}
+
+/* ── Utilidades ──────────────────────────────────────────────── */
+.hidden{display:none !important;}
+
+/* ── Modal de victoria (diseño A) ────────────────────────────── */
+.victory-box {
+  position: relative;
+  overflow: hidden;
+  text-align: center;
+}
+.victory-shapes {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.victory-content {
+  position: relative;
+  z-index: 1;
+}
+.victory-title {
+  font-family: 'Schoolbell', cursive !important;
+  font-size: 40px !important;
+  font-weight: 400 !important;
+  color: #1A3A60 !important;
+  letter-spacing: 5px !important;
+  line-height: 1 !important;
+  margin-bottom: 4px !important;
+}
+.victory-num {
+  font-size: 11px;
+  color: #888;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+.victory-date {
+  font-size: 11px;
+  color: #AAAAAA;
+  letter-spacing: 1px;
+  margin-bottom: 18px;
+}
+.victory-stats {
+  display: flex;
+  justify-content: center;
+  gap: 28px;
+  margin-bottom: 14px;
+}
+.victory-stat-val {
+  font-size: 22px !important;
+  font-weight: 900;
+  color: #1A1A1A !important;
+}
+.victory-stat-lbl {
+  font-size: 9px;
+  color: #BBBBBB;
+  letter-spacing: 1px;
+  margin-top: 2px;
+  text-transform: uppercase;
+}
+.victory-divv { width: 1px; background: #EEECE0; }
+.victory-divh { height: 1px; background: #F0EDE0; margin: 14px 0; }
+.victory-link {
+  font-size: 12px;
+  color: #7060C0;
+  font-weight: 700;
+  letter-spacing: .5px;
+  margin-bottom: 16px;
+}
+
+/* ── Navegación de días ───────────────────────────────────────── */
+.subtitle-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin-top: 3px;
+}
+.subtitle-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+.btn-nav {
+  background: none;
+  border: none;
+  font-size: 22px;
+  color: #B0A890;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+  border-radius: 6px;
+  transition: color .15s, background .15s;
+  min-width: 28px;
+}
+.btn-nav:hover:not(:disabled) { color: #3A3060; background: rgba(58,48,96,.07); }
+.btn-nav:disabled { opacity: .25; cursor: default; }
+
+/* ── Badge de modo ───────────────────────────────────────────── */
+.mode-badge {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  padding: 2px 8px;
+  border-radius: 20px;
+}
+.mode-badge.reto    { background: #FFF0F0; color: #C04040; border: 1.5px solid #F0C0C0; }
+.mode-badge.history { background: #F0F4FF; color: #4060C0; border: 1.5px solid #C0CCEE; }
+
+/* ── Botón Retar ─────────────────────────────────────────────── */
+.btn-challenge {
+  background: #FFFEF5;
+  border: 1.5px solid #C8B890 !important;
+  color: #7A6858;
+  font-family: 'Patrick Hand', cursive;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background .15s;
+  white-space: nowrap;
+}
+.btn-challenge:hover { background: #F5EEE0; }
+
+/* ── Countdown en victoria ───────────────────────────────────── */
+.victory-countdown-wrap { text-align: center; }
+.victory-countdown-lbl {
+  font-size: 9px;
+  color: #CCCCCC;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.victory-countdown {
+  font-size: 20px;
+  font-weight: 900;
+  color: #3A3060;
+  letter-spacing: 2px;
+}
+
+/* ── Etiquetas de las flechas de navegación ──────────────────── */
+.btn-nav-label {
+  font-family: 'Patrick Hand', cursive;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .5px;
+  vertical-align: middle;
+}
+
+/* ── Toast de reto copiado ───────────────────────────────────── */
+.challenge-toast {
+  position: fixed;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%) translateY(0);
+  background: #3A3060;
+  color: #FFF;
+  font-family: 'Jost', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 12px 22px;
+  border-radius: 30px;
+  box-shadow: 0 8px 28px rgba(0,0,0,.25);
+  white-space: nowrap;
+  z-index: 99998;
+  transition: opacity .3s ease, transform .3s ease;
+}
+.challenge-toast.hidden {
+  display: none !important;
+}
+.challenge-toast.hiding {
+  opacity: 0;
+  transform: translateX(-50%) translateY(8px);
+}
+
+/* ── Patrón ajedrez (casillas oscuras = posición de rombos) ── */
+.cell.chess-dark {
+  background: #EDE8D5;
+}
+.cell.chess-dark.valid-state  { background: #DFF0D5; }
+.cell.chess-dark.invalid-state{ background: #F5E0E0; }
+.cell.chess-dark.valid-hover  { background: #C8E0E8; }
